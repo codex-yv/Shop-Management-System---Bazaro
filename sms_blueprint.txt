@@ -2,19 +2,19 @@
 
 ---> Inventory Management:
 
-* Add, update, and delete products
+* Add, update, and delete products (inventory)
 
-* Low stock alerts
+* Low stock alerts (Alerts)
 
-* Barcode scanning support
+* Barcode scanning support 
 
-* Batch and expiry date management
+* Batch and expiry date management (Alerts && inventory)
 
-* Sales and Billing:
+* Sales and Billing: (history && Billing)
 
-* Quick billing interface
+* Quick billing interface (billing)
 
-* Apply discounts, taxes, and offers
+* Apply discounts, taxes, and offers (discounts)
 
 * Multiple payment methods (cash, card, UPI, etc.)
 
