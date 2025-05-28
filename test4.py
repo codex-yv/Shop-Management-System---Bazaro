@@ -24,9 +24,10 @@
 #     print("\nProgram stopped by user.")
 
 
-from datetime import datetime
+a = "JSWJJJW"
 
-# Get today's day as a number (01 to 31)
-day_of_month = datetime.today().day
+print(a.lower())
 
-print(day_of_month/31)
+
+
+
