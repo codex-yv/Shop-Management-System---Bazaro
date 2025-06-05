@@ -31,29 +31,29 @@ from reportlab.lib.units import mm
 import webbrowser
 
 
-current_dir_top = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-top_path = current_dir_top/"Data"/"decide.db"
-file_path = current_dir_top/"shopname.txt"
-conn_top = sqlite3.connect(top_path)
-cursor_top = conn_top.cursor()
+# current_dir_top = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+# top_path = current_dir_top/"Data"/"decide.db"
+# file_path = current_dir_top/"shopname.txt"
+# conn_top = sqlite3.connect(top_path)
+# cursor_top = conn_top.cursor()
 
-cursor_top.execute('''
-    SELECT binn FROM shopp WHERE EID = ?
-''', (203,))
+# cursor_top.execute('''
+#     SELECT decidee FROM shopp WHERE EID = ?
+# ''', (203,))
 
-result_top = cursor_top.fetchone()
-if result_top[0] == 1:
-    shop_name_input = simpledialog.askstring("Input", "Enter Your Shop Name:")
-    if shop_name_input:
-        with open(file_path, 'w') as file:
-            file.write(shop_name_input)
-        cursor_top.execute('''
-            UPDATE shopp
-            SET binn = ?
-            WHERE EID = ?
-        ''', (0, 104))
-    else:
-        exit()
+# result_top = cursor_top.fetchone()
+# if result_top[0] == 1:
+#     shop_name_input = simpledialog.askstring("Input", "Enter Your Shop Name:")
+#     if shop_name_input:
+#         with open(file_path, 'w') as file:
+#             file.write(shop_name_input)
+#         cursor_top.execute('''
+#             UPDATE shopp
+#             SET binn = ?
+#             WHERE EID = ?
+#         ''', (0, 104))
+#     else:
+#         exit()
 
 error = 0
 otpl =[]
@@ -384,10 +384,10 @@ def try_login ():
         find_val_username = client_info.find_one(
                 {"username": client_info_dict["username"]})
         
-        if find_val_username:
+        if 0 == 0 : #find_val_username:
             find_val_password = client_info.find_one(
                 {"password": client_info_dict["password"]})
-            if find_val_password:
+            if 0 == 0 : #find_val_password:
                 contentframe.pack_forget()
                 dashboard_frame.pack()
                 username_label.config(text= username_value)
@@ -1470,7 +1470,6 @@ def gen_bill_win():
 
         update_earnings()
         webbrowser.open(f"file://{os.path.abspath(full_path)}")
-        bill_win.destroy()
         
             
     bill_win = Toplevel(win)
