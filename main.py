@@ -3,7 +3,7 @@ import re
 import git
 import time
 import openpyxl
-from datetime import datetime
+from datetime import datetime, timedelta
 import sqlite3
 import socket
 import pymongo
@@ -14,7 +14,7 @@ import threading
 from tkinter import*
 from tkinter import ttk
 import customtkinter as ctk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, simpledialog
 from tkcalendar import Calendar
 from PIL import Image, ImageTk
 from openpyxl import load_workbook
@@ -26,7 +26,34 @@ from email.message import EmailMessage
 from pathlib import Path
 from dotenv import load_dotenv
 import pandas as pd
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import mm
+import webbrowser
 
+
+current_dir_top = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+top_path = current_dir_top/"Data"/"decide.db"
+file_path = current_dir_top/"shopname.txt"
+conn_top = sqlite3.connect(top_path)
+cursor_top = conn_top.cursor()
+
+cursor_top.execute('''
+    SELECT binn FROM shopp WHERE EID = ?
+''', (203,))
+
+result_top = cursor_top.fetchone()
+if result_top[0] == 1:
+    shop_name_input = simpledialog.askstring("Input", "Enter Your Shop Name:")
+    if shop_name_input:
+        with open(file_path, 'w') as file:
+            file.write(shop_name_input)
+        cursor_top.execute('''
+            UPDATE shopp
+            SET binn = ?
+            WHERE EID = ?
+        ''', (0, 104))
+    else:
+        exit()
 
 error = 0
 otpl =[]
@@ -42,7 +69,6 @@ product_id_found = {
 }
 
 choice_list = []
-
 
 username_list = []
 
@@ -74,11 +100,56 @@ def get_percentage_of_day():
     return (seconds_passed / total_seconds_in_day) * 100
 
 def update_progress():
+
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+    db_file_rest = current_dir/"Data"/"decide.db"
+   
+
+    # Connect to the SQLite database
+    conn_rest = sqlite3.connect(db_file_rest)
+    cursor_rest = conn_rest.cursor()
+    
+    cursor_rest.execute('''
+        SELECT binn FROM reset WHERE EID = ?
+    ''', (201,))
+
+    result_rest = cursor_rest.fetchone()
+    
     percentage = get_percentage_of_day()
+    if percentage == 100:
+        if result_rest[0] == 1:
+            earnings.update_one({"Earning_ID":101}, {"$set":{"Daily_Income":0}})
+            sql = '''
+            UPDATE reset
+            SET binn = ?
+            WHERE EID = ?;
+            '''
+            cursor_rest.execute(sql, (0, 201))
+            conn_rest.commit()
+    else:
+        # print("NOT 100")
+        if result_rest[0] != 1:
+            sql = '''
+            UPDATE reset
+            SET binn = ?
+            WHERE EID = ?;
+            '''
+            cursor_rest.execute(sql, (1, 201))
+            conn_rest.commit()
+            
+    conn_rest.close()
+    
+    try:        
+        daily_earning = earnings.find_one({"Earning_ID":101}, {"Daily_Income":1}) 
+        daily_profit = str(daily_earning["Daily_Income"])
+        daily_income_profit.configure(text = daily_profit )
+    except TypeError:
+        daily_income_profit.configure(text = "00" )
+
     # progress_var.set(percentage)
     daily_progress.set(get_percentage_of_day() / 100) 
     daily_progress_label.configure(text=f"{percentage:.2f}% day completed")
-    win.after(1000, update_progress)
+    win.after(3000, update_progress)
 
 def generate_otp():
     return random.randint(100000, 999999)
@@ -107,27 +178,127 @@ def get_fraction_of_week():
 
 def update_week_progress():
     
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+    db_file_rest = current_dir/"Data"/"decide.db"
+
+    # Connect to the SQLite database
+    conn_rest = sqlite3.connect(db_file_rest)
+    cursor_rest = conn_rest.cursor()
+    
+    cursor_rest.execute('''
+        SELECT binn FROM reset WHERE EID = ?
+    ''', (202,))
+
+    result_rest = cursor_rest.fetchone()
+    
     day_frac = get_fraction_of_week()    
 
+    if day_frac == 100:
+        if result_rest[0] == 1:
+            earnings.update_one({"Earning_ID":101}, {"$set":{"Weekly_Income":0}})
+            sql = '''
+            UPDATE reset
+            SET binn = ?
+            WHERE EID = ?;
+            '''
+            cursor_rest.execute(sql, (0, 202))
+            conn_rest.commit()
+    else:
+        if result_rest[0] != 1:
+            sql = '''
+            UPDATE reset
+            SET binn = ?
+            WHERE EID = ?;
+            '''
+            cursor_rest.execute(sql, (1, 202))
+            conn_rest.commit()
+            
+    conn_rest.close()        
+    try:
+        weekly_earning = earnings.find_one({"Earning_ID":101}, {"Weekly_Income":1}) 
+        weekly_profit = str(weekly_earning["Weekly_Income"])
+        weekly_income_profit.configure(text = weekly_profit )
+    except TypeError:
+        weekly_income_profit.configure(text = "00" )
+                 
+    
     weekly_progress.set(day_frac/100)
     
-    win.after(1000, update_week_progress)
+    win.after(3000, update_week_progress)
+
+month_days = {
+    1: 31,   # January
+    2: 28,   # February (non-leap year)
+    3: 31,   # March
+    4: 30,   # April
+    5: 31,   # May
+    6: 30,   # June
+    7: 31,   # July
+    8: 31,   # August
+    9: 30,   # September
+    10: 31,  # October
+    11: 30,  # November
+    12: 31   # December
+}
     
     
 def get_monthly_percent():
-
+    global month_days
     date = datetime.today().day
 
-    monthly_progress_label.config (text=f"Day {date} of 30/31")
+    month_num =  datetime.now().month
+    days = month_days[month_num]
+    monthly_progress_label.config (text=f"Day {date} of {days}")
     
-    return (date/30)*100
+    return (date/days)*100
 
 def update_month_progress():
-    month_frac = get_monthly_percent()
+    
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+    db_file_rest = current_dir/"Data"/"decide.db"
 
+    # Connect to the SQLite database
+    conn_rest = sqlite3.connect(db_file_rest)
+    cursor_rest = conn_rest.cursor()
+    
+    cursor_rest.execute('''
+        SELECT binn FROM reset WHERE EID = ?
+    ''', (203,))
+
+    result_rest = cursor_rest.fetchone()
+    
+    month_frac = get_monthly_percent()
+    
+    if month_frac == 100:
+        if result_rest[0] == 1:
+            earnings.update_one({"Earning_ID":101}, {"$set":{"Monthly_Income":0}})
+            sql = '''
+            UPDATE reset
+            SET binn = ?
+            WHERE EID = ?;
+            '''
+            cursor_rest.execute(sql, (0, 203))
+            conn_rest.commit()
+    else:
+        if result_rest[0] != 1:
+            sql = '''
+            UPDATE reset
+            SET binn = ?
+            WHERE EID = ?;
+            '''
+            cursor_rest.execute(sql, (1, 203))
+            conn_rest.commit()
+
+    conn_rest.close()
+    try:
+        monthly_earning = earnings.find_one({"Earning_ID":101}, {"Monthly_Income":1}) 
+        monthly_profit = str(monthly_earning["Monthly_Income"])
+        monthly_income_profit.configure(text = monthly_profit )    
+    except TypeError:
+        monthly_income_profit.configure(text = "00" )   
     monthly_progress.set(month_frac/100)
 
-    win.after(1000, update_month_progress)
+    win.after(3000, update_month_progress)
     
 def update_server(dictonary):
     global client_info
@@ -213,10 +384,10 @@ def try_login ():
         find_val_username = client_info.find_one(
                 {"username": client_info_dict["username"]})
         
-        if 0 == 0 : #find_val_username:
+        if find_val_username:
             find_val_password = client_info.find_one(
                 {"password": client_info_dict["password"]})
-            if 0 == 0 : #find_val_password:
+            if find_val_password:
                 contentframe.pack_forget()
                 dashboard_frame.pack()
                 username_label.config(text= username_value)
@@ -396,6 +567,9 @@ def alertFunction():
         func_finder(prev_func_name)
         func_list.insert(0, current_func_name)
         alert_display.pack(side='left')
+        insert_data_to_alert_treeview()
+        insert_data_to_alert_treeview_stock()
+        
 
 def billingFunction():
     global func_list
@@ -429,6 +603,8 @@ def historyFunction():
         func_finder(prev_func_name)
         func_list.insert(0, current_func_name)
         history_display.pack(side='left')
+        show_local_history_data()
+        show_global_history_data()
 
 def settingFunction():
     global func_list
@@ -477,7 +653,14 @@ def open_calendar():
     top.title("Select a Date")
     top.geometry("300x300")
 
-    cal = Calendar(top, selectmode='day', year=2025, month=5, day=22)
+    now_spec = datetime.now()
+
+    # Extract year, month, and day
+    YEAR = now_spec.year
+    MONTH = now_spec.month
+    DATE = now_spec.day
+    
+    cal = Calendar(top, selectmode='day', year=YEAR, month=MONTH, day= DATE)
     cal.pack(pady=10)
 
     def grab_date():
@@ -495,7 +678,14 @@ def open_calendar1():
     top.title("Select a Date")
     top.geometry("300x300")
 
-    cal = Calendar(top, selectmode='day', year=2025, month=5, day=22)
+    now_spec = datetime.now()
+
+    # Extract year, month, and day
+    YEAR = now_spec.year
+    MONTH = now_spec.month
+    DATE = now_spec.day
+    
+    cal = Calendar(top, selectmode='day', year=YEAR, month=MONTH, day= DATE)
     cal.pack(pady=10)
 
     def grab_date():
@@ -549,6 +739,15 @@ def add_stock():
                                     }
                                     
                                     inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
+                                    
+                                    find_product_name_lc = inventory.find_one(
+                                        {"Product_ID": barid.get()}, {"Product_Name":1})
+                                    find_product_cp_lc = inventory.find_one(
+                                        {"Product_ID": barid.get()}, {"Cost_Price":1})
+                                    
+                                    localhistory_update(product_id1 = barid.get(), product_name1 = find_product_name_lc, amount1 = find_product_cp_lc*float(productqty.get()), action1 = int(productqty.get()))
+                                    globalhistory_update(product_id1s = barid.get(), product_name1s = find_product_name_lc ,amount1s = find_product_cp_lc*float(productqty.get()) , action1s = int(productqty.get()))
+
                                     messagebox.showinfo('Stock Update', f"Stock with ID {barid.get()} is updated!")
                                 else:
                                     messagebox.showinfo('Stock Quantity Update', 'While updating the stock quantity, you need to re-enter Manufacture and Expire date and product quantity.')
@@ -608,6 +807,10 @@ def add_stock():
                 }
                 # print(product_dict_to_add)
                 inventory.insert_one(product_dict_to_add)
+                
+                localhistory_update(product_id1 = barid.get(), product_name1 = productname.get().lower(), amount1 = float(cp.get())*float(productqty.get()), action1 = int(productqty.get()))
+                globalhistory_update(product_id1s = barid.get(), product_name1s = productname.get().lower() ,amount1s = float(cp.get())*float(productqty.get()) , action1s = int(productqty.get()))
+
                 messagebox.showinfo('Successfull', 'Product Added Successfully!')
             else:
                 pass
@@ -991,7 +1194,567 @@ def get_cc_text():
             messagebox.showerror('Customer Care', "Can't send the message! Please login again.")
     else:
         messagebox.showerror('Customer Care', "Can't send empty message!")
+def insert_in_alert_textbox(idee):
+    show_data = inventory.find_one(
+        {'Product_ID':idee},
+        {"Product_Name": 1,
+         "Quantity":1,
+        "Cost_Price": 1,
+        "Selling_Price": 1,
+        "Manufacture_Date": 1,
+        "Expire_Date": 1,
+        "Tax": 1,
+        "Discount": 1}
+    )
+    data_insert_alert_txtbx = f'''
+Product_ID:       {idee},
+Product_Name:     {show_data['Product_Name']},
+Quantity:         {show_data['Quantity']},  
+Cost_Price:       {show_data['Cost_Price']},
+Selling_Price:    {show_data['Selling_Price']},
+Manufacture_Date: {show_data['Manufacture_Date']},
+Expire_Date:      {show_data['Expire_Date']},
+Tax:              {show_data['Tax']},
+Discount:         {show_data['Discount']}
+            
+            '''
+    alert_textbox.insert("0.0", data_insert_alert_txtbx)
+            
+def on_row_selected_expire(value):
+    alert_textbox.delete("0.0", 'end')
+    selected = alert_tree_expire.focus()
+    if selected:
+        values = alert_tree_expire.item(selected, "values")
+        if values:
+            product_id = values[1]
+            insert_in_alert_textbox(product_id)
+
+def on_row_selected_stock(value):
+    alert_textbox.delete("0.0", 'end')
+    selected = alert_tree_stock.focus()
+    if selected:
+        values = alert_tree_stock.item(selected, "values")
+        if values:
+            product_id = values[1]
+            insert_in_alert_textbox(product_id)
+
+def insert_data_to_alert_treeview():
+    
+    for items in alert_tree_expire.get_children():
+        alert_tree_expire.delete(items)
         
+    alert_tree_expire.tag_configure('expiring_soon', foreground='red')
+    alert_tree_expire.tag_configure('expiring_late', foreground='green')
+    inventory_data = inventory.find({})
+    count = 1
+    
+    date_format = "%d/%m/%Y"
+    date1 = datetime.strptime(datetime.today().strftime(date_format), date_format)
+    
+    for data in inventory_data:
+        try:
+            expire_date_db = data['Expire_Date']
+            date2 = datetime.strptime(expire_date_db, date_format)
+            
+            date_diff = abs((date2 - date1).days)
+
+            if date_diff<29:
+                item = (count, data['Product_ID'], data['Product_Name'], str(date_diff)+" days")
+                alert_tree_expire.insert("", "end", values=item, tags=('expiring_soon',) )
+                count = count+1
+            else:
+                # item = (count, data['Product_ID'], data['Product_Name'], str(date_diff)+" days")
+                # alert_tree_expire.insert("", "end", values=item, tags=('expiring_late',))
+                # count = count+1
+                pass
+        except (ValueError, ZeroDivisionError):
+            pass
+        
+        
+def insert_data_to_alert_treeview_stock():
+    inventory_data = inventory.find({})
+    for items in alert_tree_stock.get_children():
+        alert_tree_stock.delete(items)
+    
+    alert_tree_stock.tag_configure('stock_low', foreground='red')
+    alert_tree_stock.tag_configure('stock_ok', foreground='green')
+    
+    count2 = 1
+    for  stockk in inventory_data:
+        if stockk['Quantity'] <= 20:
+            item = (count2, stockk['Product_ID'], stockk['Product_Name'], stockk['Quantity'])
+            alert_tree_stock.insert("", "end", values=item, tags=('stock_low',) )
+            count2 = count2+1
+        else:
+            # item = (count2, stockk['Product_ID'], stockk['Product_Name'], stockk['Quantity'])
+            # alert_tree_stock.insert("", "end", values=item, tags=('stock_ok',))
+            # count2 = count2+1
+            pass
+
+            
+def clear_alert_texbox():
+    alert_textbox.delete("0.0", "end")
+    
+click_count = 1
+def switch_to_stock():
+    global click_count
+    if click_count%2 != 0:
+        # print("odd")
+        exchange_label_button.configure(text = 'Show Expire Alert')
+        click_count = click_count + 1
+        expiring_frame.pack_forget()
+        stock_alert_frame.pack(side='left', anchor='nw', padx=20, pady=(170, 0))
+        
+        insert_data_to_alert_treeview_stock()
+    else:
+        # print("even")
+        exchange_label_button.configure(text = 'Show Stock Alert')
+        click_count = click_count + 1
+        stock_alert_frame.pack_forget()
+        expiring_frame.pack(side='left', anchor='nw', padx=20, pady=(170,0))
+
+def CGST_rs(pdct_price, pdct_qty, cgst):
+    if cgst == 0 :
+        return 0
+    else:
+        return (pdct_qty*pdct_price*cgst)/100
+    
+def SGST_rs(pdct_price, pdct_qty, sgst):
+    if sgst == 0:
+        return 0
+    else:
+        return((pdct_qty*pdct_price*sgst)/100)
+        
+def total_amount(pdct_price, pdct_qty, sgst, cgst, discount):
+    if discount == 0:
+        return ((pdct_price*pdct_qty)+sgst+cgst)
+    else:
+        discount_value = (((pdct_price*pdct_qty)+sgst+cgst))*discount/100
+        actual_amount = ((pdct_price*pdct_qty)+sgst+cgst)
+        return actual_amount - discount_value
+def check_product_quantity(pdct_qty, pdct_id):
+    find_quantity = inventory.find_one({"Product_ID":pdct_id},{"Quantity":1})
+    if find_quantity["Quantity"] >= pdct_qty+1:
+        return True
+    else:
+        return False
+           
+billing_slno = 1
+product_ids = []
+def billing_tree_insert(value):
+    global billing_slno, product_ids
+
+    inv_data = inventory.find_one({'Product_ID':barcodevalue.get()})
+    
+    if inv_data:
+        product_dict_bill = inventory.find_one(
+            {'Product_ID':barcodevalue.get()},
+            {"Product_Name": 1,
+            "Selling_Price": 1,
+            "Tax": 1,
+            "Discount": 1}
+        )
+
+        for item0 in billing_tree.get_children():
+            values0 = billing_tree.item(item0)["values"]
+            product_ids.append(str(values0[1]))  # Product ID is at index 1
+            
+        if barcodevalue.get() in product_ids:
+            
+            for item in billing_tree.get_children():
+                values = list(billing_tree.item(item)["values"])
+                if str(values[1]) == barcodevalue.get():  # Product ID is at index 1
+                    product_current_qty = values[3]
+                    chk_quantity = check_product_quantity(product_current_qty, barcodevalue.get())
+                    if chk_quantity is True:
+                        cgst_rs = CGST_rs(product_dict_bill["Selling_Price"], product_current_qty+1, product_dict_bill["Tax"]/2)
+                        sgst_rs = CGST_rs(product_dict_bill["Selling_Price"], product_current_qty+1, product_dict_bill["Tax"]/2)
+                        amount_total = total_amount(product_dict_bill["Selling_Price"], product_current_qty+1,sgst_rs, cgst_rs, product_dict_bill["Discount"])
+                        values[3] = int(product_current_qty+1)  # Quantity is at index 3
+                        values[6] = sgst_rs
+                        values[8] = cgst_rs
+                        values[10] = amount_total
+                        billing_tree.item(item, values=values)
+                    else:
+                        messagebox.showinfo('Stock Alert', f"Stock Exhausted for {values[2]}")
+        else:
+            init_chk_quantity = check_product_quantity(0, barcodevalue.get())
+            if init_chk_quantity is True:
+                cgst_rs = CGST_rs(product_dict_bill["Selling_Price"], 1, product_dict_bill["Tax"]/2)
+                sgst_rs = CGST_rs(product_dict_bill["Selling_Price"], 1, product_dict_bill["Tax"]/2)
+                amount_total = total_amount(product_dict_bill["Selling_Price"], 1,sgst_rs, cgst_rs, product_dict_bill["Discount"])
+                
+                product_data = [
+                    (billing_slno, barcodevalue.get(), product_dict_bill["Product_Name"], 1, product_dict_bill["Selling_Price"],
+                    product_dict_bill["Tax"]/2, sgst_rs, product_dict_bill["Tax"]/2, cgst_rs, product_dict_bill["Discount"], amount_total)
+                ]
+                billing_tree.insert("", END, values=product_data[0])
+                billing_slno = billing_slno+1
+            else:
+                messagebox.showinfo("Stock Alert", f"Stock Exhausted for {product_dict_bill['Product_Name']}")
+            
+        barcode_id_entry.delete(0, "end")
+    else:
+        messagebox.showerror("ID Error", "Product ID not found")
+  
+def clear_bill_treeview():
+    global billing_slno, product_ids
+    for item in billing_tree.get_children():
+        billing_tree.delete(item)
+        
+    billing_slno = 1
+    product_ids = []  
+    
+payment_method = "CASH"
+
+def on_cash_click():
+    global payment_method
+    if upi_var.get():
+        upi_var.set(0)
+        payment_method = "CASH"
+def on_upi_click():
+    global payment_method
+    if cash_var.get():
+        cash_var.set(0)
+        payment_method = "UPI"
+def on_checkbox2_click():
+    if def_var.get():
+        def_var.set(0)
+
+def on_checkbox1_click():
+    if a4_var.get():
+        a4_var.set(0)
+
+
+
+def gen_bill_win():
+    data_dict = {}
+    global payment_method
+    
+    def save_and_print():
+        global payment_method
+        filename = f"Bill_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        full_path = os.path.join(save_path, filename)
+
+        paper_width = 80 * mm
+        paper_height = 200 * mm
+        c = canvas.Canvas(full_path, pagesize=(paper_width, paper_height))
+
+        x_margin = 5 * mm
+        y_position = paper_height - 10 * mm
+        line_height = 10
+
+        c.setFont("Courier", 8)
+
+        for line in bill_text.split('\n'):
+            c.drawString(x_margin, y_position, line)
+            y_position -= line_height
+            if y_position < 10:
+                c.showPage()
+                c.setFont("Courier", 8)
+                y_position = paper_height - 10 * mm
+
+        c.save()
+        messagebox.showinfo("Bill Saved", "Bill Saved Successfully.")
+        
+        for pdid, itemm in data_dict.items():
+            result_found = inventory.update_one(
+                {"Product_ID": str(pdid)},
+                {"$inc": {"Quantity": -int(itemm["Quantity"])}}
+            )
+            if result_found.matched_count <= 0:
+                print("Can't update the db")
+        
+            localhistory_update(product_id1 = pdid, product_name1 = itemm["Product Name"],amount1 = itemm["Amount"], action1 = -int(itemm["Quantity"]))
+            globalhistory_update(product_id1s = pdid, product_name1s = itemm["Product Name"], amount1s = itemm["Amount"], action1s = -int(itemm["Quantity"]))
+
+        update_earnings()
+        webbrowser.open(f"file://{os.path.abspath(full_path)}")
+        bill_win.destroy()
+        
+            
+    bill_win = Toplevel(win)
+    bill_win.title("Generate Invoice")
+    
+    save_path = r"./bills"
+    os.makedirs(save_path, exist_ok=True)
+    
+    if def_checkbox.get() == 1:
+        bill_win.geometry("430x700+310+30")
+        bill_text_box = Text(bill_win, height=10, width=40, wrap="none", relief='ridge', bd=2)
+        bill_text_box.pack(side="left", fill="both", expand=True, pady=(0, 60))
+
+        # Create the Scrollbar and link it to the Text widget
+        scrollbar = Scrollbar(bill_win, command=bill_text_box.yview)
+        scrollbar.pack(side="right", fill="y")
+
+        # Configure the Text widget to update with the scrollbar
+        bill_text_box.config(yscrollcommand=scrollbar.set)
+        for data in billing_tree.get_children():
+            datas = billing_tree.item(data)["values"]
+            data_dict[datas[1]] = {"SLNO":datas[0], "Product Name":datas[2],
+                                   "Quantity":datas[3], "MRP":datas[4],"Amount": datas[10]}
+
+        print(data_dict)
+        try:
+            with open(file_path, 'r') as file:
+                content = file.read().strip()
+                
+        except FileNotFoundError:
+            messagebox.showerror('File Error',f"The file '{file_path}' was not found.")
+        except IOError:
+            messagebox.showerror('Read Error',f"An error occurred while reading the file '{file_path}'.")
+
+        df_format = pd.DataFrame.from_dict(data_dict, orient='index')
+
+        # Compute total
+        try:
+            total_amount = df_format['Amount'].astype(float).sum()
+        except KeyError:
+            total_amount = 0
+
+        # Create formatted string
+        pre_header = f"Shop : {content} \nAddress : A.S College Road,Bikramganj\nMob : 9608053244\nEmail : yourajverma960@gmail.com\nGSTIN : 10CDLP1ZQ\n==================== Buyer Details ====================\n"
+        header = "==================== INVOICE ====================\n"
+        footer = f"\n------------------------------------------------\nTotal Amount: {total_amount:.2f}\n================================================\nThank you for your purchase!\n"
+        payment = f"Payment Method : {payment_method}\n"
+        today = datetime.today().strftime('%d/%m/%Y %H:%M:%S')
+        
+        buyer_detail = ""
+        if buyer_name_entry.get():
+            buyer_detail += f"Buyer Name : {buyer_name_entry.get()}\n"
+        if buyer_phone_entry.get():
+            buyer_detail += f"Buyer Phone : {buyer_phone_entry.get()}\n"
+        if buyer_address_entry.get():
+            buyer_detail += f"Buyer Add : {buyer_address_entry.get()}\n"
+        else:
+            buyer_detail = "NONE\n"
+        # Format DataFrame for text display
+        table_str = df_format.to_string(index=False)
+
+        # Final bill text
+        bill_text =pre_header + buyer_detail + header + table_str + footer + payment + today
+        
+        bill_text_box.insert(END, bill_text)
+        
+        save_print_btn = ctk.CTkButton(bill_win, font=('Poppins', 18, 'bold'), text="Generate Bill", height=35, width = 200, fg_color="#28F13F",
+                                     bg_color="white", corner_radius=13, hover_color='black', text_color="white",
+                                     command = save_and_print)
+        save_print_btn.place(x = 100, y = 650)
+                
+    else:
+        pass
+    
+current_dir_his = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+
+def localhistory_update(product_id1, product_name1,amount1, action1):
+    global current_dir_his
+    
+    now = datetime.now()
+
+
+    date_str = now.strftime("%d/%m/%Y")
+
+
+    time_str = now.strftime("%H:%M:%S")
+
+    db_path = current_dir_his/"Data"/"localhistory.db"
+    conn_lc = sqlite3.connect(db_path)
+
+    cursor_lc = conn_lc.cursor()
+
+    create_table_query = '''
+    CREATE TABLE IF NOT EXISTS lchistory (
+        Product_ID TEXT,
+        Product_Name TEXT,
+        Date TEXT,
+        Time TEXT,
+        Amount REAL,
+        Action INTEGER
+    )
+    '''
+    cursor_lc.execute(create_table_query)
+    
+    product_id = product_id1
+    product_name = product_name1
+    date = date_str
+    time = time_str
+    amount = amount1
+    action = action1
+
+    # SQL insert statement
+    insert_query = '''
+    INSERT INTO lchistory (Product_ID, Product_Name, Date, Time, Amount, Action)
+    VALUES (?, ?, ?, ?, ?, ?)
+    '''
+
+    cursor_lc.execute(insert_query, (product_id, product_name, date, time, amount, action))
+
+    conn_lc.commit()
+    conn_lc.close()
+
+
+    
+def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
+    global username_list, current_dir_his
+    
+    try:
+        email = client_info.find_one({'username':username_list[0]}, {'email':1})
+        
+        if not email:
+            email = "None"
+    except IndexError:
+        email = "None"
+    
+    now = datetime.now()
+
+
+    date_str = now.strftime("%d/%m/%Y")
+
+
+    time_str = now.strftime("%H:%M:%S")
+    
+    glob_history_dict = {
+        "product_id" : product_id1s,
+        "Email" : email,
+        "product_name" : product_name1s,
+        "date" : date_str,
+        "time" : time_str,
+        "amount" : amount1s,
+        "action" : action1s
+    }
+
+    global_history.insert_one(glob_history_dict)
+
+        
+def show_local_history_data():
+    global username_list, current_dir_his
+    
+    for item in history_tree.get_children():
+        history_tree.delete(item)
+    
+    db_path = current_dir_his/"Data"/"localhistory.db"
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row  # Enables dict-like access
+
+    cursor = conn.cursor()
+
+    # Select all rows from the table
+    cursor.execute('SELECT * FROM lchistory')
+    rows = cursor.fetchall()
+
+    # Convert each row to a dictionary
+    data = []
+    for row in rows:
+        row_dict = dict(row)
+        data.append(row_dict)
+
+    conn.close()
+    
+    history_tree.tag_configure('sell', foreground="#f92d2d")  
+    history_tree.tag_configure('buy', foreground="#229954")
+
+    # Example output
+    for row in data:
+        history_data_format = (row["Product_ID"], row["Product_Name"], row["Date"], row["Time"], row["Amount"], row["Action"])
+        if int(row["Action"]) < 0:
+            history_tree.insert("", END, values = history_data_format, tags=("sell",))
+        else:
+            history_tree.insert("", END, values = history_data_format, tags=("buy",))
+
+def show_global_history_data():
+    for item in glo_history_tree.get_children():
+        glo_history_tree.delete(item)
+        
+    glob_history_data = global_history.find()
+
+    glo_history_tree.tag_configure('sell', foreground="#f92d2d")  
+    glo_history_tree.tag_configure('buy', foreground="#229954")
+    
+    # Print each document
+    for doc in glob_history_data:
+        history_data_format2 = (doc["product_id"], doc["Email"], doc["product_name"], doc["date"], doc["time"], doc["amount"], doc["action"])
+        if int(doc["action"]) < 0:
+            glo_history_tree.insert("", END, values = history_data_format2, tags=("sell",))
+        else:
+            glo_history_tree.insert("", END, values = history_data_format2, tags=("buy",))
+
+
+def show_local_history():
+    global_history_frame.pack_forget()
+    local_history_frame.pack(side='bottom', anchor='s', fill=X, expand=True, padx=10, pady=(0, 10))
+    show_local_history_data()
+
+def show_global_history():
+    local_history_frame.pack_forget()
+    global_history_frame.pack(side='bottom', anchor='s', fill=X, expand=True, padx=10, pady=(0, 10))
+    show_global_history_data()
+
+def get_week_dates(date_str):
+    # Convert the string to a datetime object
+    given_date = datetime.strptime(date_str, "%d/%m/%Y")
+
+    # Find the Monday of the current week
+    start_of_week = given_date - timedelta(days=given_date.weekday())
+
+    # Generate all dates from Monday to Sunday
+    week_dates = [(start_of_week + timedelta(days=i)).strftime("%d/%m/%Y") for i in range(7)]
+    return week_dates
+    
+sum_amount_day = 0
+sum_amount_week = 0
+sum_amount_month = 0
+
+def update_earnings():
+    global sum_amount_day, sum_amount_month, sum_amount_week
+    globalhistory_data = list(global_history.find())
+    if globalhistory_data:
+        now = datetime.now()
+
+        tdate = now.strftime("%d/%m/%Y")
+        
+        for daad in globalhistory_data:
+            # print(daad)
+            if daad["action"] < 0:
+                if tdate == daad["date"]:
+                    # print(daad)
+                    add_amount_day = float(daad["amount"])
+                    sum_amount_day = sum_amount_day + add_amount_day
+                    
+        for daam in globalhistory_data:
+            # print("Entered Loop")
+            if daam["action"] < 0:
+                # print("Found Action")
+                if now.month == int(daam["date"].split('/')[1]):
+                    # print("Enterted Sum area")
+                    add_amount_month = float(daam["amount"])
+                    sum_amount_month = sum_amount_month + add_amount_month
+                 
+        week_list = get_week_dates(tdate)
+
+        for daaw in globalhistory_data:
+            if daaw["action"] < 0:
+                if daaw["date"] in week_list:
+                    add_amount_week = float(daaw["amount"])
+                    sum_amount_week = sum_amount_week + add_amount_week
+                    
+        
+    # print(sum_amount_day)
+    # print(sum_amount_week)
+    # print(sum_amount_month)
+    update_earning = earnings.update_one({"Earning_ID":101},
+                                         {
+                                             "$set":{
+                                                 "Daily_Income":sum_amount_day,
+                                                 "Weekly_Income":sum_amount_week,
+                                                 "Monthly_Income":sum_amount_month
+                                             }
+                                         })
+    sum_amount_day = 0  
+    sum_amount_week = 0
+    sum_amount_month = 0
+    
+       
 if check_internet():
     current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
     envars_db = current_dir/ ".env" # create .env file in current folder
@@ -1002,7 +1765,6 @@ if check_internet():
 
     login_signup_database = client['Login-Signup']
     client_info = login_signup_database.clien_infos
-    
     win=Tk()
     win.geometry("1400x770+50+0")
     win.title("Bazaro")
@@ -1214,7 +1976,7 @@ if check_internet():
     try:
         with open(file_path, 'r') as file:
             content = file.read().strip().split()
-
+            # shop_name_for_bill = file.read().strip()
             for parts in content:
                 shop_name = shop_name+'-'+parts
             
@@ -1227,9 +1989,46 @@ if check_internet():
     
     login_signup_database = client[r_shop_name]
     inventory = login_signup_database.stock_inventory
+    global_history = login_signup_database.Global_History
+    earnings = login_signup_database.Earnings
     
+    db_file_er = current_dir/"Data"/"decide.db"
+
+    # Connect to the SQLite database
+    conn_ern = sqlite3.connect(db_file_er)
+    cursor_ern = conn_ern.cursor()
+    
+    cursor_ern.execute('''
+        SELECT decidee FROM mongoEarnings WHERE EID = ?
+    ''', (104,))
+
+    result_ern = cursor_ern.fetchone()
+    
+    if result_ern[0] == 1:
+        data_ern = {
+            "Earning_ID": 101,
+            "Daily_Income": 0,
+            "Weekly_Income": 0,
+            "Monthly_Income": 0
+        }
+
+        # Insert the data
+        insert_result = earnings.insert_one(data_ern)
+        print("INSERTED")
+        cursor_ern.execute('''
+            UPDATE mongoEarnings
+            SET decidee = ?
+            WHERE EID = ?
+        ''', (0, 104))  # You can change 1 to any other value
+
+        # Commit the changes and close the connection
+        conn_ern.commit()
+    conn_ern.close()
+        
+        
     customer_care_database = client['Customer-Care']
     cc_database = customer_care_database.cc_messages
+    
     
     dashboard_frame=Frame(win,height=770,width=1400,bg='red')
     dashboard_frame.propagate(False)
@@ -1410,7 +2209,7 @@ if check_internet():
     add_stock_canvas.pack()
 
 
-    imagepath11=cwd+"\\uiux\\add stock.png"
+    imagepath11=cwd+"\\uiux\\add_stock.png"
     openphoto11=Image.open(imagepath11).resize((1150,770))
     bgimage11=ImageTk.PhotoImage(openphoto11)
     add_stock_canvas.create_image(575,385, image=bgimage11)
@@ -1511,7 +2310,7 @@ if check_internet():
     update_stock_canvas.pack()
 
 
-    imagepath12=cwd+"\\uiux\\update_stock2.png"
+    imagepath12=cwd+"\\uiux\\update_stock3.png"
     openphoto12=Image.open(imagepath12).resize((1150,770))
     bgimage12=ImageTk.PhotoImage(openphoto12)
     update_stock_canvas.create_image(575,385, image=bgimage12)
@@ -1664,6 +2463,92 @@ if check_internet():
     alert_display=Frame(dashboard_frame,height=770,width=1150,bg='green')
     alert_display.propagate(False)
     # alert_display.pack(side='left')
+    alert_canvas=Canvas(alert_display,height=770,width=1150,bg='blue',bd=0,highlightthickness=0, relief='ridge')
+    alert_canvas.propagate(False)
+    alert_canvas.pack()
+
+
+    imagepath15=cwd+"\\uiux\\alert11.png"
+    openphoto15=Image.open(imagepath15).resize((1150,770))
+    bgimage15=ImageTk.PhotoImage(openphoto15)
+    alert_canvas.create_image(575,385, image=bgimage15)
+    
+    expiring_frame = Frame(alert_canvas, bg='red', height=500, width=800)
+    expiring_frame.propagate(False)
+    expiring_frame.pack(side='left', anchor='nw', padx=20, pady=(170,0))
+    
+    
+    columns = ("SLNO", "Product_ID", "Product_Name", "Expiring In")
+    alert_tree_expire = ttk.Treeview(expiring_frame, columns=columns, show="headings")
+    for col in columns:
+        alert_tree_expire.heading(col, text=col)
+    
+    alert_tree_expire.column("SLNO", width=60, anchor="center")
+    alert_tree_expire.column("Product_ID", width=100, anchor="center")
+    alert_tree_expire.column("Product_Name", width=180, anchor="w")
+    alert_tree_expire.column("Expiring In", width=100, anchor="center")
+    # tree.column("Stock left", width=100, anchor="center")
+    
+    
+    alert_tree_expire.bind("<<TreeviewSelect>>", on_row_selected_expire)
+    
+    # Add vertical scrollbar
+    v_scrollbar = ttk.Scrollbar(expiring_frame, orient="vertical", command=alert_tree_expire.yview)
+    alert_tree_expire.configure(yscrollcommand=v_scrollbar.set)
+
+    # Place Treeview and Scrollbar side-by-side
+    alert_tree_expire.pack(side="left", fill="both", expand=True)
+    v_scrollbar.pack(side="right", fill="y")
+    
+    alert_info_frame = Frame(alert_canvas, height=500, width=270)
+    alert_info_frame.propagate(False)
+    alert_info_frame.pack(side='right', anchor='ne', padx=(0,20), pady=(170, 0))
+    
+    alert_textbox = ctk.CTkTextbox(alert_info_frame, font=('Poppins', 12), border_color='#4B54F8', border_width=2, scrollbar_button_color='#4B54F8',
+                                   scrollbar_button_hover_color='grey', fg_color="#F5F6FF")
+    alert_textbox.pack(fill = 'both', expand = True)
+    
+    textbox_clear_button = ctk.CTkButton(alert_canvas, text="Clear", font=('Poppins', 16, 'bold'), text_color='black',
+                            fg_color='#4B54F8', cursor='hand2', bg_color='white', border_color='#4B54F8', hover_color='grey',
+                            command=clear_alert_texbox)
+    textbox_clear_button.place(x = 920, y = 690)
+    
+    exchange_label_button = ctk.CTkButton(alert_canvas, text="Show Stock Alert", font=('Poppins', 16, 'bold'), text_color='black',
+                            fg_color='white', cursor='hand2', bg_color='white', border_color='#4B54F8', hover_color='grey',
+                            command= switch_to_stock)
+    exchange_label_button.place(x = 630, y = 690)
+    
+    exchange_pil_image = Image.open(cwd+"\\uiux\\exchange.png")
+    exchange_icon = ctk.CTkImage(light_image=exchange_pil_image, dark_image=exchange_pil_image, size=(30, 30))
+    
+    exchange_button = ctk.CTkButton(alert_canvas, image=exchange_icon, text="", width=40, height=40, fg_color= "white",
+                                    bg_color="white", hover_color="white", cursor = 'hand2', command= switch_to_stock)
+    exchange_button.place( x = 770, y = 682)
+    
+    stock_alert_frame = Frame(alert_canvas, bg='red', height=500, width=800)
+    stock_alert_frame.propagate(False)
+    
+    columns2 = ("SLNO", "Product_ID", "Product_Name", "Stock left")
+    alert_tree_stock = ttk.Treeview(stock_alert_frame, columns=columns2, show="headings")
+    for col in columns2:
+        alert_tree_stock.heading(col, text=col)
+    
+    alert_tree_stock.column("SLNO", width=60, anchor="center")
+    alert_tree_stock.column("Product_ID", width=100, anchor="center")
+    alert_tree_stock.column("Product_Name", width=180, anchor="w")
+    # alert_tree_stock.column("Expiring In", width=100, anchor="center")
+    alert_tree_stock.column("Stock left", width=100, anchor="center")
+    
+    
+    alert_tree_stock.bind("<<TreeviewSelect>>", on_row_selected_stock)
+    
+    # Add vertical scrollbar
+    v_scrollbar = ttk.Scrollbar(stock_alert_frame, orient="vertical", command=alert_tree_stock.yview)
+    alert_tree_stock.configure(yscrollcommand=v_scrollbar.set)
+
+    # Place Treeview and Scrollbar side-by-side
+    alert_tree_stock.pack(side="left", fill="both", expand=True)
+    v_scrollbar.pack(side="right", fill="y")
     
     # =======================<<<<<<<<<<<< billing Display INTERFACE FROM HERE >>>>>>>>>>>>>>>=============================
     
@@ -1671,11 +2556,129 @@ if check_internet():
     billing_display.propagate(False)
     # billing_display.pack(side='left')
     
+    billing_canvas=Canvas(billing_display,height=770,width=1150,bg='blue',bd=0,highlightthickness=0, relief='ridge')
+    billing_canvas.propagate(False)
+    billing_canvas.pack()
+
+
+    imagepath16=cwd+"\\uiux\\invoice8.png"
+    openphoto16=Image.open(imagepath16).resize((1150,770))
+    bgimage16=ImageTk.PhotoImage(openphoto16)
+    billing_canvas.create_image(575,385, image=bgimage16)
+    
+    barcodevalue = StringVar()
+    
+    barcode_id_entry = ctk.CTkEntry(billing_display, width = 313, height= 35, fg_color ='white', font=('poppins', 18), corner_radius = 13,
+                                    border_color='white', bg_color='white', textvariable=barcodevalue)
+    barcode_id_entry.place(x = 28, y = 199)
+    
+
+    billing_columns = (
+        "SLNO", "Product ID", "Product Name", "Quantity", "SP",
+        "SGST", "SGST(Rs)", "CGST", "CGST(Rs)", "Discount(%)", "Amount(GST Inc)"
+    )
+
+    # Create Treeview
+    billing_tree = ttk.Treeview(billing_display, columns=billing_columns, show="headings", height=20)
+
+    # Define column headings
+    for bill_col in billing_columns:
+        if bill_col == 'SLNO':
+            billing_tree.heading(bill_col, text=bill_col)
+            billing_tree.column(bill_col, anchor="center", width=50)
+        else:
+            billing_tree.heading(bill_col, text=bill_col)
+            billing_tree.column(bill_col, anchor="center", width=100)
+
+    # # Example data (you can remove this and add your own later)
+    
+
+    # Add vertical scrollbar
+    billing_scrollbar = ttk.Scrollbar(billing_display, orient="vertical", command=billing_tree.yview)
+    billing_tree.configure(yscrollcommand=billing_scrollbar.set)
+    billing_scrollbar.place(x = 1080, y = 310, height= 430)
+
+    # Pack the treeview
+    billing_tree.place(x = 25, y = 310)
+
+    barcode_id_entry.bind("<Return>", billing_tree_insert)
+    
+    bill_find_entry = ctk.CTkEntry(billing_display, width = 200, height= 25, fg_color ='white', font=('poppins', 18), corner_radius = 13,
+                                    border_color='black', bg_color='white')
+    bill_find_entry.place(x = 810, y = 55)
+    
+    bill_find_button = ctk.CTkButton(billing_display, font=('Poppins', 18, 'bold'), text="Find Bill", height=25, width = 100, fg_color="#4B54F8",
+                                     bg_color="white", corner_radius=13, hover_color='black', text_color="white")
+    bill_find_button.place(x = 860, y = 87)
+    
+    buyer_name_entry = ctk.CTkEntry(billing_display, width =220, height= 25, fg_color ='white', font=('poppins', 18), corner_radius = 13,
+                                    border_color='black', bg_color='white')
+    buyer_name_entry.place(x = 570, y = 55)
+    
+    buyer_phone_entry = ctk.CTkEntry(billing_display, width =190, height= 25, fg_color ='white', font=('poppins', 18), corner_radius = 13,
+                                    border_color='black', bg_color='white')
+    buyer_phone_entry.place(x = 600, y = 87)
+    
+    buyer_address_entry = ctk.CTkEntry(billing_display, width =200, height= 25, fg_color ='white', font=('poppins', 18), corner_radius = 13,
+                                    border_color='black', bg_color='white')
+    buyer_address_entry.place(x = 590, y = 118)
+    
+    cash_var = IntVar(value=1)
+    
+    cash_checkbox = ctk.CTkCheckBox(billing_display, text="Cash", text_color="black", hover_color="black",
+                                   checkmark_color="white", bg_color="White", checkbox_height=25, checkbox_width=25,
+                                   font=('poppins', 16), border_color="grey", variable= cash_var,
+                                   command= on_cash_click)
+    cash_checkbox.place(x = 820, y = 122)
+    
+    upi_var = IntVar()
+    
+    upi_checkbox = ctk.CTkCheckBox(billing_display, text="UPI", text_color="black", hover_color="black",
+                                   checkmark_color="white", bg_color="White", checkbox_height=25, checkbox_width=25,
+                                   font=('poppins', 16), border_color="grey",variable=upi_var,
+                                   command= on_upi_click)
+    upi_checkbox.place(x = 940, y = 122)
+    
+    reset_info = ctk.CTkButton(billing_display, font=('Poppins', 18, 'bold'), text="Reset Information", height=35, width = 200, fg_color="#F8514B",
+                                     bg_color="white", corner_radius=13, hover_color='black', text_color="white",
+                                     command = clear_bill_treeview)
+    reset_info.place(x = 610, y = 158)
+    
+    generate_bill_btn = ctk.CTkButton(billing_display, font=('Poppins', 18, 'bold'), text="Generate Bill", height=35, width = 200, fg_color="#28F13F",
+                                     bg_color="white", corner_radius=13, hover_color='black', text_color="white",
+                                     command = gen_bill_win)
+    generate_bill_btn.place(x = 610, y = 198)
+    
+    def_var = IntVar(value=1)
+    def_checkbox = ctk.CTkCheckBox(billing_display, text="Default", text_color="black", hover_color="black",
+                                   checkmark_color="white", bg_color="White", checkbox_height=25, checkbox_width=25,
+                                   font=('poppins', 16), border_color="grey", variable= def_var, command= on_checkbox1_click)
+    def_checkbox.place(x = 820, y = 200)
+    
+    a4_var = IntVar()
+    
+    a4_checkbox = ctk.CTkCheckBox(billing_display, text="A4 size", text_color="black", hover_color="black",
+                                   checkmark_color="white", bg_color="White", checkbox_height=25, checkbox_width=25,
+                                   font=('poppins', 16), border_color="grey",variable=a4_var, command=on_checkbox2_click)
+    a4_checkbox.place(x = 940, y = 200)
+    
+    
+
+    
     # =======================<<<<<<<<<<<< supply Display INTERFACE FROM HERE >>>>>>>>>>>>>>>=============================
     
     supply_display=Frame(dashboard_frame,height=770,width=1150,bg='pink')
     supply_display.propagate(False)
     # supply_display.pack(side='left')
+    supply_canvas=Canvas(supply_display,height=770,width=1150,bg='blue',bd=0,highlightthickness=0, relief='ridge')
+    supply_canvas.propagate(False)
+    supply_canvas.pack()
+
+
+    imagepath18=cwd+"\\uiux\\supp_undev.png"
+    openphoto18=Image.open(imagepath18).resize((1150,770))
+    bgimage18=ImageTk.PhotoImage(openphoto18)
+    supply_canvas.create_image(575,385, image=bgimage18)
     
     # =======================<<<<<<<<<<<< history Display INTERFACE FROM HERE >>>>>>>>>>>>>>>=============================
     
@@ -1683,11 +2686,99 @@ if check_internet():
     history_display.propagate(False)
     # history_display.pack(side='left')
     
+    history_canvas=Canvas(history_display,height=770,width=1150,bg='blue',bd=0,highlightthickness=0, relief='ridge')
+    history_canvas.propagate(False)
+    history_canvas.pack()
+
+
+    imagepath17=cwd+"\\uiux\\history.png"
+    openphoto17=Image.open(imagepath17).resize((1150,770))
+    bgimage17=ImageTk.PhotoImage(openphoto17)
+    history_canvas.create_image(575,385, image=bgimage17)
+    
+    
+    local_history_btn = ctk.CTkButton(history_display, text="Local", font=('poppins', 16, 'bold'), fg_color="#3498db", text_color="white",
+                                      bg_color="white", width=117, height=35, cursor = "hand2", hover_color="Black",
+                                      command=show_local_history)
+    local_history_btn.place(x = 450, y = 213)
+    
+    
+    global_history_btn = ctk.CTkButton(history_display, text="Global", font=('poppins', 16, 'bold'), fg_color="#8e44ad", text_color="white",
+                                      bg_color="white", width=117, height=35, cursor = "hand2", hover_color="Black",
+                                      command=show_global_history)
+    global_history_btn.place(x = 585, y = 213)
+    
+    local_history_frame = Frame(history_canvas, bg="red", relief='ridge', bd=3, height=500)
+    local_history_frame.propagate(False)
+    local_history_frame.pack(side='bottom', anchor='s', fill=X, expand=True, padx=10, pady=(0, 10))
+    
+    
+    lc_history_columns = ("Product_ID", "Product_Name", "Date", "Time", "Amount(Rs)", "Action")
+
+    # Create the Treeview
+    history_tree = ttk.Treeview(local_history_frame, columns=lc_history_columns, show="headings")
+
+    # Define headings
+    for cols in lc_history_columns:
+        if cols == "Product_Name":
+            history_tree.heading(cols, text=cols)
+            history_tree.column(cols, width=150, anchor="center")
+        elif cols == "Time":
+            history_tree.heading(cols, text=cols)
+            history_tree.column(cols, width=50, anchor="center")
+        else:
+            history_tree.heading(cols, text=cols)
+            history_tree.column(cols, width=100, anchor="center")
+
+    vsb = ttk.Scrollbar(local_history_frame, orient="vertical", command=history_tree.yview)
+    history_tree.configure(yscrollcommand=vsb.set)
+
+    # Use pack to position the Treeview and Scrollbar
+    vsb.pack(side="right", fill="y")
+    history_tree.pack(side="left", expand=True, fill="both")
+    
+    global_history_frame = Frame(history_canvas, bg="blue", relief='ridge', bd=3, height=500)
+    global_history_frame.propagate(False)
+    # global_history_frame.pack(side='bottom', anchor='s', fill=X, expand=True, padx=10, pady=(0, 10))
+
+    glo_history_columns = ("Product_ID", "Email", "Product_Name", "Date", "Time", "Amount(Rs)", "Action")
+
+    # Create the Treeview
+    glo_history_tree = ttk.Treeview(global_history_frame, columns=glo_history_columns, show="headings")
+
+    # Define headings
+    for cols in glo_history_columns:
+        if cols == "Product_Name":
+            glo_history_tree.heading(cols, text=cols)
+            glo_history_tree.column(cols, width=150, anchor="center")
+        elif cols == "Time":
+            glo_history_tree.heading(cols, text=cols)
+            glo_history_tree.column(cols, width=50, anchor="center")
+        else:
+            glo_history_tree.heading(cols, text=cols)
+            glo_history_tree.column(cols, width=100, anchor="center")
+
+    vsb2 = ttk.Scrollbar(global_history_frame, orient="vertical", command=glo_history_tree.yview)
+    glo_history_tree.configure(yscrollcommand=vsb2.set)
+
+    # Use pack to position the Treeview and Scrollbar
+    vsb2.pack(side="right", fill="y")
+    glo_history_tree.pack(side="left", expand=True, fill="both")
     # =======================<<<<<<<<<<<< setting Display INTERFACE FROM HERE >>>>>>>>>>>>>>>=============================
     
     setting_display=Frame(dashboard_frame,height=770,width=1150,bg='brown')
     setting_display.propagate(False)
     # setting_display.pack(side='left')
+    
+    setting_canvas=Canvas(setting_display,height=770,width=1150,bg='blue',bd=0,highlightthickness=0, relief='ridge')
+    setting_canvas.propagate(False)
+    setting_canvas.pack()
+
+
+    imagepath19=cwd+"\\uiux\\setting_undev.png"
+    openphoto19=Image.open(imagepath19).resize((1150,770))
+    bgimage19=ImageTk.PhotoImage(openphoto19)
+    setting_canvas.create_image(575,385, image=bgimage19)
     
     # =======================<<<<<<<<<<<< cc Display INTERFACE FROM HERE >>>>>>>>>>>>>>>=============================
     
