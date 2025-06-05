@@ -1,0 +1,7 @@
+It shoud be inside your .env file
+
+    EMAIL = ''
+    KEY = ''
+    URL_Mongo = ''
+
+pip install -r requirements.txt
