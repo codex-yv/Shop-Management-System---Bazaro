@@ -33,7 +33,7 @@ uri = "mongodb+srv://bazaodemo:mongodb856@cluster0.fgw70na.mongodb.net/"
 client = MongoClient(uri)
 
 # Select the database and collection
-db = client["sdarsh-sirana-store"]
+db = client["Adarsh-Kirana-Store"]
 collection = db["Earnings"]
 
 # Data to be inserted
