@@ -138,7 +138,7 @@ def on_submit():
         elif listed_yes_var.get():
             print("Shop Already listed!")
             current_dir_setup = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-            filename = current_dir_setup/"shopname2.txt"
+            filename = current_dir_setup/"shopname.txt"
             with open(filename, "w") as file:
                 file.write(shopnameID[0])
             file.close()
