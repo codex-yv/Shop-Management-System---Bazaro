@@ -3,6 +3,7 @@ import re
 import git
 import time
 import openpyxl
+import string
 from datetime import datetime, timedelta
 import sqlite3
 import socket
@@ -31,29 +32,6 @@ from reportlab.lib.units import mm
 import webbrowser
 
 
-# current_dir_top = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-# top_path = current_dir_top/"Data"/"decide.db"
-# file_path = current_dir_top/"shopname.txt"
-# conn_top = sqlite3.connect(top_path)
-# cursor_top = conn_top.cursor()
-
-# cursor_top.execute('''
-#     SELECT decidee FROM shopp WHERE EID = ?
-# ''', (203,))
-
-# result_top = cursor_top.fetchone()
-# if result_top[0] == 1:
-#     shop_name_input = simpledialog.askstring("Input", "Enter Your Shop Name:")
-#     if shop_name_input:
-#         with open(file_path, 'w') as file:
-#             file.write(shop_name_input)
-#         cursor_top.execute('''
-#             UPDATE shopp
-#             SET binn = ?
-#             WHERE EID = ?
-#         ''', (0, 104))
-#     else:
-#         exit()
 
 error = 0
 otpl =[]
@@ -85,7 +63,7 @@ def update_day_date_time():
     now = datetime.now()
     
     day = now.strftime("%A") 
-    date_time = now.strftime("%Y-%m-%d %H:%M:%S")
+    date_time = now.strftime("%d/%m/%Y %H:%M:%S")
     day_label.config(text=day)
     date_time_label.config(text=date_time)
 
@@ -100,51 +78,14 @@ def get_percentage_of_day():
     return (seconds_passed / total_seconds_in_day) * 100
 
 def update_progress():
-
-    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-    db_file_rest = current_dir/"Data"/"decide.db"
-   
-
-    # Connect to the SQLite database
-    conn_rest = sqlite3.connect(db_file_rest)
-    cursor_rest = conn_rest.cursor()
-    
-    cursor_rest.execute('''
-        SELECT binn FROM reset WHERE EID = ?
-    ''', (201,))
-
-    result_rest = cursor_rest.fetchone()
     
     percentage = get_percentage_of_day()
-    if percentage == 100:
-        if result_rest[0] == 1:
-            earnings.update_one({"Earning_ID":101}, {"$set":{"Daily_Income":0}})
-            sql = '''
-            UPDATE reset
-            SET binn = ?
-            WHERE EID = ?;
-            '''
-            cursor_rest.execute(sql, (0, 201))
-            conn_rest.commit()
-    else:
-        # print("NOT 100")
-        if result_rest[0] != 1:
-            sql = '''
-            UPDATE reset
-            SET binn = ?
-            WHERE EID = ?;
-            '''
-            cursor_rest.execute(sql, (1, 201))
-            conn_rest.commit()
-            
-    conn_rest.close()
+
+    update_earnings()
+
+    daily_ern = earnings.find_one({"Earning_ID":101}, {"Daily_Income":1})
     
-    try:        
-        daily_earning = earnings.find_one({"Earning_ID":101}, {"Daily_Income":1}) 
-        daily_profit = str(daily_earning["Daily_Income"])
-        daily_income_profit.configure(text = daily_profit )
-    except TypeError:
-        daily_income_profit.configure(text = "00" )
+    daily_income_profit.configure(text = daily_ern["Daily_Income"])
 
     # progress_var.set(percentage)
     daily_progress.set(get_percentage_of_day() / 100) 
@@ -178,49 +119,11 @@ def get_fraction_of_week():
 
 def update_week_progress():
     
-    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-    db_file_rest = current_dir/"Data"/"decide.db"
-
-    # Connect to the SQLite database
-    conn_rest = sqlite3.connect(db_file_rest)
-    cursor_rest = conn_rest.cursor()
-    
-    cursor_rest.execute('''
-        SELECT binn FROM reset WHERE EID = ?
-    ''', (202,))
-
-    result_rest = cursor_rest.fetchone()
-    
     day_frac = get_fraction_of_week()    
-
-    if day_frac == 100:
-        if result_rest[0] == 1:
-            earnings.update_one({"Earning_ID":101}, {"$set":{"Weekly_Income":0}})
-            sql = '''
-            UPDATE reset
-            SET binn = ?
-            WHERE EID = ?;
-            '''
-            cursor_rest.execute(sql, (0, 202))
-            conn_rest.commit()
-    else:
-        if result_rest[0] != 1:
-            sql = '''
-            UPDATE reset
-            SET binn = ?
-            WHERE EID = ?;
-            '''
-            cursor_rest.execute(sql, (1, 202))
-            conn_rest.commit()
-            
-    conn_rest.close()        
-    try:
-        weekly_earning = earnings.find_one({"Earning_ID":101}, {"Weekly_Income":1}) 
-        weekly_profit = str(weekly_earning["Weekly_Income"])
-        weekly_income_profit.configure(text = weekly_profit )
-    except TypeError:
-        weekly_income_profit.configure(text = "00" )
-                 
+    
+    weekly_ern = earnings.find_one({"Earning_ID":101}, {"Weekly_Income":1})
+    
+    weekly_income_profit.configure(text = weekly_ern["Weekly_Income"])
     
     weekly_progress.set(day_frac/100)
     
@@ -254,48 +157,12 @@ def get_monthly_percent():
 
 def update_month_progress():
     
-    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-    db_file_rest = current_dir/"Data"/"decide.db"
-
-    # Connect to the SQLite database
-    conn_rest = sqlite3.connect(db_file_rest)
-    cursor_rest = conn_rest.cursor()
-    
-    cursor_rest.execute('''
-        SELECT binn FROM reset WHERE EID = ?
-    ''', (203,))
-
-    result_rest = cursor_rest.fetchone()
-    
     month_frac = get_monthly_percent()
     
-    if month_frac == 100:
-        if result_rest[0] == 1:
-            earnings.update_one({"Earning_ID":101}, {"$set":{"Monthly_Income":0}})
-            sql = '''
-            UPDATE reset
-            SET binn = ?
-            WHERE EID = ?;
-            '''
-            cursor_rest.execute(sql, (0, 203))
-            conn_rest.commit()
-    else:
-        if result_rest[0] != 1:
-            sql = '''
-            UPDATE reset
-            SET binn = ?
-            WHERE EID = ?;
-            '''
-            cursor_rest.execute(sql, (1, 203))
-            conn_rest.commit()
-
-    conn_rest.close()
-    try:
-        monthly_earning = earnings.find_one({"Earning_ID":101}, {"Monthly_Income":1}) 
-        monthly_profit = str(monthly_earning["Monthly_Income"])
-        monthly_income_profit.configure(text = monthly_profit )    
-    except TypeError:
-        monthly_income_profit.configure(text = "00" )   
+    monthly_ern = earnings.find_one({"Earning_ID":101}, {"Monthly_Income":1})
+    
+    monthly_income_profit.configure(text = monthly_ern["Monthly_Income"])
+    
     monthly_progress.set(month_frac/100)
 
     win.after(3000, update_month_progress)
@@ -1470,7 +1337,7 @@ def gen_bill_win():
 
         update_earnings()
         webbrowser.open(f"file://{os.path.abspath(full_path)}")
-        
+        bill_win.destroy()
             
     bill_win = Toplevel(win)
     bill_win.title("Generate Invoice")
@@ -1752,7 +1619,7 @@ def update_earnings():
     sum_amount_day = 0  
     sum_amount_week = 0
     sum_amount_month = 0
-    
+
        
 if check_internet():
     current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
@@ -1986,10 +1853,10 @@ if check_internet():
 
     r_shop_name = shop_name[1:]
     
-    login_signup_database = client[r_shop_name]
-    inventory = login_signup_database.stock_inventory
-    global_history = login_signup_database.Global_History
-    earnings = login_signup_database.Earnings
+    shop_database = client[r_shop_name]
+    inventory = shop_database.stock_inventory
+    global_history = shop_database.Global_History
+    earnings = shop_database.Earnings
     
     db_file_er = current_dir/"Data"/"decide.db"
 
