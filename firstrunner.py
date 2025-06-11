@@ -114,7 +114,7 @@ def insert_shopname_to_txt():
     print(shop_name)
     # Define the filename
     current_dir_setup = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-    filename = current_dir_setup/"shopname2.txt"
+    filename = current_dir_setup/"shopname.txt"
 
     # Open the file in write mode ('w') – this will overwrite the file if it already exists
     with open(filename, "w") as file:
