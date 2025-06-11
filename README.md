@@ -91,11 +91,19 @@
    ```bash
    git clone https://github.com/codex-yv/Shop-Management-System---Bazaro.git
 
-2. **Requirement files** the repository:
+2. **Requirement files** run setup.py file:
    ```bash
-   pip install -r requirements.txt
+   py setup.py
 
-3. **Read "How to use.txt" file**
+3. **Basic Setup** run firstrunner.py file:
+   ```bash
+   py firstrunner.py
+
+4. **Main Application** run main.py file:
+   ```bash
+   py main.py
+   
+3. **Read "How to use.txt" file**  (Not updated yet)
 
 ## Development Status
 
