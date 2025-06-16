@@ -18,7 +18,8 @@ if check_internet():
         "pywin32",
         "python-dotenv",
         "pandas",
-        "reportlab"
+        "reportlab",
+        "customtkinter"
     ]
 
     # Install each package using pip

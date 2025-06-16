@@ -1,7 +1,39 @@
-It shoud be inside your .env file
+STEP ---> 1 (Installation of Bazaro)
 
-    EMAIL = ''
-    KEY = ''
-    URL_Mongo = ''
+>> See the Installation GUIDE on Readme.md file.
 
-pip install -r requirements.txt
+STEP ---> 2 (Setting Up Bazaro)
+
+>> Run setup.py file to start the setup. Make sure that you are connected to the internate.
+
+STEP 3 ---> (Make Your Account on MongoDb Atlas)
+
+>> Sign Up/ Login to your MongoDb account.
+>> Setup your MongoDb Atlas and create a cluster.
+>> Create a MongoDb Compass connection url to connect to the database.
+
+>>> Watch this video to setup your atlas :- https://www.youtube.com/watch?v=daMxiBS0odk&list=LL&index=55&t=62s (watch from begening)
+
+STEP ---> 4 (Get email app key):
+
+>> Complete 2 step verification of your email.
+>> Search for App Key.
+>> Note down the generated app key
+
+>>> Watch Youtube tutorials to get email app key
+
+STEP ---> 4 (create an .env file)
+
+>> Create an .env file in your root directory and write the following information in it with file name just ".env"
+
+EMAIL = 'Your Email'
+KEY = 'Email APP key'
+URL_Mongo = 'your mongo compass url to connect to database'
+
+>> Content inside the .env file should be ditto same.
+
+STEP ---> 5 (Run firstrunner.py file)
+
+>> Add the asked informations.
+
+STEP ---6 Run main.py file and enjoy.
