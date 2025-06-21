@@ -19,7 +19,9 @@ if check_internet():
         "python-dotenv",
         "pandas",
         "reportlab",
-        "customtkinter"
+        "customtkinter",
+        "GitPython",
+        "tkcalendar"
     ]
 
     # Install each package using pip
