@@ -30,7 +30,8 @@ import pandas as pd
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 import webbrowser
-
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 
 
 error = 0
@@ -1586,7 +1587,8 @@ def update_earnings():
                     # print(daad)
                     add_amount_day = float(daad["amount"])
                     sum_amount_day = sum_amount_day + add_amount_day
-                    
+
+
         for daam in globalhistory_data:
             # print("Entered Loop")
             if daam["action"] < 0:
@@ -1608,6 +1610,8 @@ def update_earnings():
     # print(sum_amount_day)
     # print(sum_amount_week)
     # print(sum_amount_month)
+    tdate2 = now.strftime("%Y-%m-%d")
+    upsert_income(tdate2, sum_amount_day)
     update_earning = earnings.update_one({"Earning_ID":101},
                                          {
                                              "$set":{
@@ -1620,7 +1624,114 @@ def update_earnings():
     sum_amount_week = 0
     sum_amount_month = 0
 
-       
+
+
+
+
+def graph_control():
+    graph_control_daily()
+
+
+def show_income_plot(dates, earnings):
+    # Clear existing widgets (like old graphs) in frame_for_graph
+    for widget in frame_for_graph.winfo_children():
+        widget.destroy()
+
+    # Convert string dates to datetime objects
+    date_objs = [datetime.strptime(date, "%Y-%m-%d") for date in dates]
+
+    # Create a Matplotlib figure
+    fig = Figure(figsize=(8, 2), dpi=90)
+    ax = fig.add_subplot(111)
+
+    line, = ax.plot(date_objs, earnings, marker='o', color='blue', picker=5)
+    ax.set_title("Daily Shop Income")
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Earnings (₹)")
+    ax.grid(True)
+    fig.autofmt_xdate()
+
+    def on_pick(event):
+        ind = event.ind[0]
+        label_for_graph.configure(text=f"Date: {dates[ind]}, Earnings: ₹{earnings[ind]}")
+
+    fig.canvas.mpl_connect('pick_event', on_pick)
+
+    canvas = FigureCanvasTkAgg(fig, master=frame_for_graph)
+    canvas.draw()
+    canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=True)
+
+    toolbar = NavigationToolbar2Tk(canvas, frame_for_graph)
+    toolbar.update()
+    toolbar.pack(side=TOP, fill=X)
+
+
+
+
+def upsert_income(date, income):
+    # Connect to the database
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+    conn = sqlite3.connect(current_dir/"Data"/"dailyEarnings.db")
+    cursor = conn.cursor()
+
+    # Check if the date exists
+    cursor.execute("SELECT 1 FROM IncomeTable WHERE Dates = ?", (date,))
+    result = cursor.fetchone()
+
+    if result:
+        # Update existing record
+        cursor.execute("UPDATE IncomeTable SET Income = ? WHERE Dates = ?", (income, date))
+        # print(f"Updated income for date {date}")
+    else:
+        # Insert new record
+        cursor.execute("INSERT INTO IncomeTable (Dates, Income) VALUES (?, ?)", (date, income))
+        # print(f"Inserted new income for date {date}")
+
+    # Commit and close
+    conn.commit()
+    conn.close()
+
+check_current_choice = []
+
+    
+def graph_control_daily():
+    frame_for_graph_monthly.pack_forget()
+    frame_for_graph_weekly.pack_forget()
+    frame_for_graph.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+    check_current_choice.insert(0, "graph_control_daily")
+
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+
+    conn = sqlite3.connect(current_dir/"Data"/"dailyEarnings.db")
+    cursor = conn.cursor()
+
+    # Fetch Dates and Income from the table
+    cursor.execute("SELECT Dates, Income FROM IncomeTable")
+    rows = cursor.fetchall()
+
+    # Separate the results into two lists
+    dates = [row[0] for row in rows]
+    income = [row[1] for row in rows]
+
+    # Close the connection
+    conn.close()
+
+    if len(dates) >= 7:
+        show_income_plot(dates, income)
+    else:
+        messagebox.showinfo(f"Graph Activation ({7- len(dates)} days left)", "Don't have much data to show graph.")
+
+def graph_control_weekly():
+    frame_for_graph.pack_forget()
+    frame_for_graph_monthly.pack_forget()
+    frame_for_graph_weekly.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+
+def graph_control_monthly():
+    frame_for_graph.pack_forget()
+    frame_for_graph_weekly.pack_forget()
+    frame_for_graph_monthly.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+
+
 if check_internet():
     current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
     envars_db = current_dir/ ".env" # create .env file in current folder
@@ -1970,8 +2081,23 @@ if check_internet():
     dashboard_canvas.propagate(False)
     dashboard_canvas.pack()
 
+    frame_for_graph =Frame(dashboard_canvas, height = 350, bg ='blue')
+    frame_for_graph.propagate(False)
 
-    imagepath3=cwd+"\\uiux\\dashboard2.png"
+    frame_for_graph_weekly = Frame(dashboard_canvas, height = 350, bg ='blue')
+    frame_for_graph_weekly.propagate(False)
+
+    frame_for_graph_monthly = Frame(dashboard_canvas, height = 350, bg ='blue')
+    frame_for_graph_monthly.propagate(False)
+
+
+    label_for_graph = ctk.CTkLabel(dashboard_canvas, text="Graph Info", font=('poppins', 15, 'bold'), fg_color="#58d68d",
+                                   bg_color="white", text_color="black", height=20, width=300, corner_radius=20)
+    label_for_graph.pack(side = 'bottom', anchor = 's', pady = 10)
+
+
+
+    imagepath3=cwd+"\\uiux\\dashboard3.png"
     openphoto3=Image.open(imagepath3).resize((1150,770))
     bgimage3=ImageTk.PhotoImage(openphoto3)
     dashboard_canvas.create_image(575,385, image=bgimage3)
@@ -2019,9 +2145,31 @@ if check_internet():
                                         width=300, progress_color="#4B54F8")
         
     monthly_progress.place( x = 35, y = 340 )
+
     
     monthly_progress_label = Label(dashboard_display, text='',font = ('Poppins', 12), fg="#6F6F6F", bg='white' )
     monthly_progress_label.place(x = 340, y = 330)
+
+    graph_refresh_button = ctk.CTkButton(dashboard_display, text='Refresh Graph', font=('poppins', 15, 'bold'), fg_color="#4B54F8",
+                                         bg_color="white", text_color='white', hover_color="#8B90F6",
+                                         command = graph_control)
+    graph_refresh_button.place(x = 950, y = 125)
+
+
+    daily_income_graph_button = ctk.CTkButton(dashboard_display, text='Daily Income Graph', font=('poppins', 15, 'bold'), fg_color="white",
+                                         bg_color="white", text_color='black', hover_color="#8B90F6", border_width=2, border_color="black",
+                                         command = graph_control_daily)
+    daily_income_graph_button.place(x = 690, y = 160)
+
+    weekly_income_graph_button = ctk.CTkButton(dashboard_display, text='Weekly Income Graph', font=('poppins', 15, 'bold'), fg_color="white",
+                                         bg_color="white", text_color='black', hover_color="#8B90F6", border_width=2, border_color="black",
+                                         command = graph_control_weekly)
+    weekly_income_graph_button.place(x = 900, y = 160)
+
+    monthly_income_graph_button = ctk.CTkButton(dashboard_display, text='Monthly Income Graph', font=('poppins', 15, 'bold'), fg_color="white",
+                                         bg_color="white", text_color='black', hover_color="#8B90F6", border_width=2, border_color="black",
+                                         command = graph_control_monthly)
+    monthly_income_graph_button.place(x = 785, y = 200)
     
     # =======================<<<<<<<<<<<< Inventory Display INTERFACE FROM HERE >>>>>>>>>>>>>>>=============================
 
