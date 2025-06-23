@@ -5,6 +5,7 @@ import time
 import openpyxl
 import string
 from datetime import datetime, timedelta
+from calendar import month_abbr
 import sqlite3
 import socket
 import pymongo
@@ -1568,6 +1569,33 @@ def get_week_dates(date_str):
     week_dates = [(start_of_week + timedelta(days=i)).strftime("%d/%m/%Y") for i in range(7)]
     return week_dates
     
+
+def get_current_week_of_month():
+    import datetime
+    today = datetime.date.today()
+    year = today.year
+    month = today.month
+
+    # First day of the month
+    first_day = datetime.date(year, month, 1)
+
+    # Find first Monday in the month
+    first_day_weekday = first_day.weekday()  # 0 = Monday
+    days_to_monday = (7 - first_day_weekday) % 7
+    first_monday = first_day if first_day_weekday == 0 else first_day + datetime.timedelta(days=days_to_monday)
+
+    # Calculate week number
+    if today < first_monday:
+        week_number = 1
+    else:
+        delta_days = (today - first_monday).days
+        week_number = (delta_days // 7) + 2
+
+    # Get short month name
+    month_short = today.strftime("%b")
+
+    return week_number, month_short
+
 sum_amount_day = 0
 sum_amount_week = 0
 sum_amount_month = 0
@@ -1611,7 +1639,12 @@ def update_earnings():
     # print(sum_amount_week)
     # print(sum_amount_month)
     tdate2 = now.strftime("%Y-%m-%d")
+    wn, month = get_current_week_of_month()
+    wn_name = "Week"+str(wn)
+
     upsert_income(tdate2, sum_amount_day)
+    upsert_income_weekly(wn_name, month, sum_amount_week)
+
     update_earning = earnings.update_one({"Earning_ID":101},
                                          {
                                              "$set":{
@@ -1665,6 +1698,43 @@ def show_income_plot(dates, earnings):
     toolbar.update()
     toolbar.pack(side=TOP, fill=X)
 
+def plot_weekly_income_chart(weeks_all, income_all):
+    for widget in frame_for_graph.winfo_children():
+        widget.destroy()
+
+    def on_bar_click(event):
+        # Get the axis where the click happened
+        for i, bar in enumerate(bars):
+            if bar.contains(event)[0]:
+                week = weeks_all[i]
+                income = income_all[i]
+                # print(f"Clicked: {week} → Income: ${income}")
+                label_for_graph.configure(text=f"{week}, Earnings: ₹{income}")
+                break
+
+    # Create figure and axis
+    fig = Figure(figsize=(8, 6), dpi=100)
+    ax = fig.add_subplot(111)
+    bars = ax.barh(weeks_all, income_all, color='skyblue')
+    ax.set_title("Weekly Income Overview")
+    ax.set_xlabel("Income ($)")
+    ax.set_ylabel("Weeks")
+    ax.invert_yaxis()
+    ax.grid(axis='x', linestyle='--', alpha=0.7)
+
+    # Bind click event to the figure
+    fig.canvas.mpl_connect('button_press_event', on_bar_click)
+
+    # Embed plot in Tkinter
+    canvas = FigureCanvasTkAgg(fig, master=frame_for_graph_weekly)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill='both', expand=True)
+
+    # Add toolbar
+    toolbar = NavigationToolbar2Tk(canvas, frame_for_graph_weekly)
+    toolbar.update()
+    toolbar.pack(side=BOTTOM, fill=X)
+
 
 
 
@@ -1690,6 +1760,35 @@ def upsert_income(date, income):
     # Commit and close
     conn.commit()
     conn.close()
+
+
+def upsert_income_weekly(week, month, income):
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+
+    conn = sqlite3.connect(current_dir/"Data"/"weeklyEarnings.db")
+    cursor = conn.cursor()
+
+    # Create the table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS IncomeTable (
+        Week TEXT,
+        Month TEXT,
+        Income REAL,
+        PRIMARY KEY (Week, Month)
+    )
+    ''')
+
+    # Function to insert or update income
+
+    cursor.execute('''
+    INSERT INTO IncomeTable (Week, Month, Income)
+    VALUES (?, ?, ?)
+    ON CONFLICT(Week, Month) DO UPDATE SET
+        Income = excluded.Income
+    ''', (week, month, income))
+    conn.commit()
+    conn.close()
+
 
 check_current_choice = []
 
@@ -1725,6 +1824,48 @@ def graph_control_weekly():
     frame_for_graph.pack_forget()
     frame_for_graph_monthly.pack_forget()
     frame_for_graph_weekly.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+
+    current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+
+    conn = sqlite3.connect(current_dir/"Data"/"weeklyEarnings.db")
+    now = datetime.now()
+    current_month_index = now.month
+    all_months = [month_abbr[i] for i in range(1, 13)]  # ['Jan', 'Feb', ..., 'Dec']
+
+    # Get the last 3 months including current
+    recent_months = [all_months[(current_month_index - i - 1) % 12] for i in range(3)]
+
+    # Connect to the database
+    cursor = conn.cursor()
+
+    # Prepare and execute the query
+    query = f'''
+        SELECT Week, Month, Income
+        FROM IncomeTable
+        WHERE Month IN ({','.join(['?'] * len(recent_months))})
+    '''
+    cursor.execute(query, recent_months)
+    rows = cursor.fetchall()
+
+    # Store results
+    Week = []
+    Month = []
+    WeekMonth = []
+    Income = []
+
+    for week, month, income in rows:
+        Week.append(week)
+        Month.append(month)
+        WeekMonth.append(f"{week} ({month})")
+        Income.append(income)
+
+    conn.close()
+
+    if len(WeekMonth) >= 4:
+        plot_weekly_income_chart(WeekMonth, Income)
+    else:
+        messagebox.showinfo(f"Graph Activation ({4- len(week)} weeks left)", "Don't have much data to show graph.")
+
 
 def graph_control_monthly():
     frame_for_graph.pack_forget()
