@@ -1,6 +1,5 @@
 import os 
 import re
-import git
 import time
 import openpyxl
 import string
@@ -1713,7 +1712,7 @@ def plot_weekly_income_chart(weeks_all, income_all):
                 break
 
     # Create figure and axis
-    fig = Figure(figsize=(8, 6), dpi=100)
+    fig = Figure(figsize=(1, 1), dpi=90)
     ax = fig.add_subplot(111)
     bars = ax.barh(weeks_all, income_all, color='skyblue')
     ax.set_title("Weekly Income Overview")

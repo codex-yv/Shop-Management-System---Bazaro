@@ -14,38 +14,38 @@ CREATE TABLE IF NOT EXISTS IncomeTable (
 )
 ''')
 
-# Function to insert or update income
-def upsert_income(week, month, income):
-    cursor.execute('''
-    INSERT INTO IncomeTable (Week, Month, Income)
-    VALUES (?, ?, ?)
-    ON CONFLICT(Week, Month) DO UPDATE SET
-        Income = excluded.Income
-    ''', (week, month, income))
-    conn.commit()
+# # Function to insert or update income
+# def upsert_income(week, month, income):
+#     cursor.execute('''
+#     INSERT INTO IncomeTable (Week, Month, Income)
+#     VALUES (?, ?, ?)
+#     ON CONFLICT(Week, Month) DO UPDATE SET
+#         Income = excluded.Income
+#     ''', (week, month, income))
+#     conn.commit()
 
-# Example usage
-# upsert_income("Week1", "June", 1500.00)   # Insert
-# May
-upsert_income("Week1", "May", 625)
-upsert_income("Week2", "May", 590)
-upsert_income("Week3", "May", 645)
-upsert_income("Week4", "May", 610)
+# # Example usage
+# # upsert_income("Week1", "June", 1500.00)   # Insert
+# # May
+# upsert_income("Week1", "May", 625)
+# upsert_income("Week2", "May", 590)
+# upsert_income("Week3", "May", 645)
+# upsert_income("Week4", "May", 610)
 
-# June
-upsert_income("Week1", "Jun", 630)
-upsert_income("Week2", "Jun", 600)
-upsert_income("Week3", "Jun", 655)
-upsert_income("Week4", "Jun", 620)
+# # June
+# upsert_income("Week1", "Jun", 630)
+# upsert_income("Week2", "Jun", 600)
+# upsert_income("Week3", "Jun", 655)
+# upsert_income("Week4", "Jun", 620)
 
-# July
-upsert_income("Week1", "Jul", 640)
-upsert_income("Week2", "Jul", 610)
-upsert_income("Week3", "Jul", 665)
-upsert_income("Week4", "Jul", 630)
+# # July
+# upsert_income("Week1", "Jul", 640)
+# upsert_income("Week2", "Jul", 610)
+# upsert_income("Week3", "Jul", 665)
+# upsert_income("Week4", "Jul", 630)
 
 
-# # Close connection
+# # # Close connection
 conn.close()
 
 
