@@ -40,42 +40,43 @@ conn.close()
 # print("Dates:", dates)
 # print("Income:", income)
 
-# import sqlite3
+import sqlite3
 
-# def upsert_income(date, income):
-#     # Connect to the database
-#     conn = sqlite3.connect('Data\\dailyEarnings.db')
-#     cursor = conn.cursor()
+def upsert_income(date, income):
+    # Connect to the database
+    conn = sqlite3.connect('Data\\dailyEarnings.db')
+    cursor = conn.cursor()
 
-#     # Check if the date exists
-#     cursor.execute("SELECT 1 FROM IncomeTable WHERE Dates = ?", (date,))
-#     result = cursor.fetchone()
+    # Check if the date exists
+    cursor.execute("SELECT 1 FROM IncomeTable WHERE Dates = ?", (date,))
+    result = cursor.fetchone()
 
-#     if result:
-#         # Update existing record
-#         cursor.execute("UPDATE IncomeTable SET Income = ? WHERE Dates = ?", (income, date))
-#         print(f"Updated income for date {date}")
-#     else:
-#         # Insert new record
-#         cursor.execute("INSERT INTO IncomeTable (Dates, Income) VALUES (?, ?)", (date, income))
-#         print(f"Inserted new income for date {date}")
+    if result:
+        # Update existing record
+        cursor.execute("UPDATE IncomeTable SET Income = ? WHERE Dates = ?", (income, date))
+        print(f"Updated income for date {date}")
+    else:
+        # Insert new record
+        cursor.execute("INSERT INTO IncomeTable (Dates, Income) VALUES (?, ?)", (date, income))
+        print(f"Inserted new income for date {date}")
 
-#     # Commit and close
-#     conn.commit()
-#     conn.close()
+    # Commit and close
+    conn.commit()
+    conn.close()
 
-# datess = [
-#     "2025-06-14", "2025-06-15", "2025-06-16", "2025-06-17",
-#     "2025-06-18", "2025-06-19", "2025-06-20", "2025-06-21"
-# ]
+datess = [
+    "2025-06-14", "2025-06-15", "2025-06-16", "2025-06-17",
+    "2025-06-18", "2025-06-19", "2025-06-20", "2025-06-21",
+    "2025-06-22", "2025-06-23", "2025-06-24"
+]
 
 
-# earningss = [
-#     1200, 1500, 800, 1800, 2100, 
-#     1900, 1300, 1000
-# ]
-# for date, income in zip(datess, earningss):
-#     upsert_income(date, income)
+earningss = [
+    1200, 1500, 800, 1800, 2100, 
+    1900, 1300, 1000, 300, 1453, 1600
+]
+for date, income in zip(datess, earningss):
+    upsert_income(date, income)
 
 
 # # Connect to the database

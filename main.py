@@ -1641,6 +1641,8 @@ def update_earnings():
     wn, month = get_current_week_of_month()
     wn_name = "Week"+str(wn)
 
+    yearr = now.year
+    update_monthly_income(month, yearr, sum_amount_month)
     upsert_income(tdate2, sum_amount_day)
     upsert_income_weekly(wn_name, month, sum_amount_week)
 
@@ -1698,7 +1700,7 @@ def show_income_plot(dates, earnings):
     toolbar.pack(side=TOP, fill=X)
 
 def plot_weekly_income_chart(weeks_all, income_all):
-    for widget in frame_for_graph.winfo_children():
+    for widget in frame_for_graph_weekly.winfo_children():
         widget.destroy()
 
     def on_bar_click(event):
@@ -1734,8 +1736,193 @@ def plot_weekly_income_chart(weeks_all, income_all):
     toolbar.update()
     toolbar.pack(side=BOTTOM, fill=X)
 
+def plot_weekly_income_comparison(weeks, monthly_incomes):
+    """
+    Plots a line chart of weekly incomes for different months on a Tkinter window.
+    Clicking on a point shows the week, month, and income.
+    """
+    for widget in frame_for_graph_weekly_c3.winfo_children():
+        widget.destroy()
+
+    fig = Figure(figsize=(6, 2), dpi=100)
+    ax = fig.add_subplot(111)
+    
+    # Dictionary to store points for click lookup
+    plotted_points = []
+
+    for month, incomes in monthly_incomes.items():
+        line, = ax.plot(weeks, incomes, marker='o', label=month, picker=5)  # `picker=5` enables click radius
+        for i, income in enumerate(incomes):
+            plotted_points.append({
+                "week": weeks[i],
+                "month": month,
+                "income": income,
+                "x": i,
+                "y": income,
+                "line": line
+            })
+
+    ax.set_title("Weekly Income Comparison")
+    ax.set_xlabel("Weeks")
+    ax.set_ylabel("Income ($)")
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend()
+
+    canvas = FigureCanvasTkAgg(fig, master=frame_for_graph_weekly_c3)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill='both', expand=True)
+
+    toolbar = NavigationToolbar2Tk(canvas, frame_for_graph_weekly_c3)
+    toolbar.update()
+    toolbar.pack(side=BOTTOM, fill=X)
+
+    # Define event handler
+    def on_pick(event):
+        mouse_event = event.mouseevent
+        artist = event.artist
+        ind = event.ind[0]
+
+        for point in plotted_points:
+            if point["line"] == artist and extract_week_index(point["week"]) == ind:
+                messagebox.showinfo(
+                    "Data Point Info",
+                    f"Month: {point['month']}\nWeek: {point['week']}\nEarning: ${point['income']}"
+                )
+                break
 
 
+    # Helper to map "Week 1" → 0, "Week 2" → 1, etc.
+    def extract_week_index(week_str):
+        return int(week_str.strip().replace("Week", "")) - 1
+
+    # Connect the event
+    fig.canvas.mpl_connect('pick_event', on_pick)
+
+def plot_weekly_income_comparison_c6(weeks, monthly_incomes):
+    """Plots weekly income comparison chart with interactive data point click."""
+    for widget in frame_for_graph_weekly_c6.winfo_children():
+        widget.destroy()
+
+    fig = Figure(figsize=(8, 2), dpi=100)
+    ax = fig.add_subplot(111)
+    plotted_points = []
+
+    for month, incomes in monthly_incomes.items():
+        line, = ax.plot(weeks, incomes, marker='o', label=month, picker=5)
+        for i, income in enumerate(incomes):
+            plotted_points.append({
+                "week": weeks[i],
+                "month": month,
+                "income": income,
+                "line": line,
+                "index": i
+            })
+
+    ax.set_title("Weekly Income Comparison (Last 6 Months)")
+    ax.set_xlabel("Weeks")
+    ax.set_ylabel("Income ($)")
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend()
+
+    canvas = FigureCanvasTkAgg(fig, master=frame_for_graph_weekly_c6)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill='both', expand=True)
+
+    toolbar = NavigationToolbar2Tk(canvas, frame_for_graph_weekly_c6)
+    toolbar.update()
+    toolbar.pack(side=BOTTOM, fill=X)
+
+    def on_pick(event):
+        artist = event.artist
+        ind = event.ind[0]
+        for point in plotted_points:
+            if point["line"] == artist and point["index"] == ind:
+                messagebox.showinfo(
+                    "Earning Info",
+                    f"Month: {point['month']}\nWeek: {point['week']}\nEarning: ${point['income']}"
+                )
+                break
+
+    fig.canvas.mpl_connect('pick_event', on_pick)
+
+def plot_weekly_income_comparison_c12(weeks, monthly_incomes):
+    """Plots a 12-month income comparison chart with clickable data points."""
+
+    for widget in frame_for_graph_weekly_c12.winfo_children():
+        widget.destroy()
+
+    fig = Figure(figsize=(10, 2), dpi=100)
+    ax = fig.add_subplot(111)
+    plotted_points = []
+
+    for month, incomes in monthly_incomes.items():
+        line, = ax.plot(weeks, incomes, marker='o', label=month, picker=5)
+        for i, income in enumerate(incomes):
+            plotted_points.append({
+                "week": weeks[i],
+                "month": month,
+                "income": income,
+                "line": line,
+                "index": i
+            })
+
+    ax.set_title("Weekly Income Comparison (Last 12 Months)")
+    ax.set_xlabel("Weeks")
+    ax.set_ylabel("Income ($)")
+    ax.grid(True, linestyle='--', alpha=0.5)
+    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))  # Legend outside
+
+    canvas = FigureCanvasTkAgg(fig, master=frame_for_graph_weekly_c12)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill='both', expand=True)
+
+    toolbar = NavigationToolbar2Tk(canvas, frame_for_graph_weekly_c12)
+    toolbar.update()
+    toolbar.pack(side=BOTTOM, fill=X)
+
+    def on_pick(event):
+        artist = event.artist
+        ind = event.ind[0]
+        for point in plotted_points:
+            if point["line"] == artist and point["index"] == ind:
+                messagebox.showinfo(
+                    "Earning Info",
+                    f"Month: {point['month']}\nWeek: {point['week']}\nEarning: ${point['income']}"
+                )
+                break
+
+    fig.canvas.mpl_connect('pick_event', on_pick)
+
+def plot_monthly_income_chart(months, monthly_totals):
+    """Plots total income per month for the last 12 months."""
+    fig = Figure(figsize=(5, 3), dpi=100)
+    ax = fig.add_subplot(111)
+
+    bars = ax.bar(months, monthly_totals, color='skyblue', picker=True)
+
+    ax.set_title("Monthly Income (Last 12 Months)")
+    ax.set_xlabel("Month")
+    ax.set_ylabel("Total Income ($)")
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+
+    canvas = FigureCanvasTkAgg(fig, master=frame_for_graph_monthly)
+    canvas.draw()
+    canvas.get_tk_widget().pack(fill='both', expand=True)
+
+    toolbar = NavigationToolbar2Tk(canvas, frame_for_graph_monthly)
+    toolbar.update()
+    toolbar.pack(side=BOTTOM, fill=X)
+
+    def on_pick(event):
+        bar = event.artist
+        for i, rect in enumerate(bars):
+            if rect == bar:
+                month = months[i]
+                total = monthly_totals[i]
+                messagebox.showinfo("Monthly Income", f"Month: {month}\nTotal Income: ${total:.2f}")
+                break
+
+    fig.canvas.mpl_connect('pick_event', on_pick)
 
 def upsert_income(date, income):
     # Connect to the database
@@ -1793,6 +1980,16 @@ check_current_choice = []
 
     
 def graph_control_daily():
+    cb3_var.set(0)
+    cb6_var.set(0)
+    cb12_var.set(0)
+    compare_cb_label.place_forget()
+    frame_for_graph_weekly_c3.pack_forget()
+    frame_for_graph_weekly_c6.pack_forget()
+    frame_for_graph_weekly_c12.pack_forget()
+    cb_3m.place_forget()
+    cb_6m.place_forget()
+    cb_12m.place_forget()
     frame_for_graph_monthly.pack_forget()
     frame_for_graph_weekly.pack_forget()
     frame_for_graph.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
@@ -1820,6 +2017,16 @@ def graph_control_daily():
         messagebox.showinfo(f"Graph Activation ({7- len(dates)} days left)", "Don't have much data to show graph.")
 
 def graph_control_weekly():
+    cb3_var.set(0)
+    cb6_var.set(0)
+    cb12_var.set(0)
+    compare_cb_label.place_forget()
+    frame_for_graph_weekly_c3.pack_forget()
+    frame_for_graph_weekly_c6.pack_forget()
+    frame_for_graph_weekly_c12.pack_forget()
+    cb_3m.place_forget()
+    cb_6m.place_forget()
+    cb_12m.place_forget()
     frame_for_graph.pack_forget()
     frame_for_graph_monthly.pack_forget()
     frame_for_graph_weekly.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
@@ -1862,15 +2069,240 @@ def graph_control_weekly():
 
     if len(WeekMonth) >= 4:
         plot_weekly_income_chart(WeekMonth, Income)
+        compare_cb_label.place(x = 690, y = 330 )
+        cb_3m.place(x = 810, y = 330)
+        cb_6m.place(x = 910, y = 330)
+        cb_12m.place(x = 1010, y = 330)
     else:
         messagebox.showinfo(f"Graph Activation ({4- len(week)} weeks left)", "Don't have much data to show graph.")
 
 
 def graph_control_monthly():
+    cb3_var.set(0)
+    cb6_var.set(0)
+    cb12_var.set(0)
+    compare_cb_label.place_forget()
+    frame_for_graph_weekly_c3.pack_forget()
+    frame_for_graph_weekly_c6.pack_forget()
+    frame_for_graph_weekly_c12.pack_forget()
+    cb_3m.place_forget()
+    cb_6m.place_forget()
+    cb_12m.place_forget()
     frame_for_graph.pack_forget()
     frame_for_graph_weekly.pack_forget()
     frame_for_graph_monthly.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+    now = datetime.now()
+    year = now.year
+    get_monthly_income_by_year(year)
 
+def handle_graph_cb():
+    if cb3_var.get():
+        cb6_var.set(0)
+        cb12_var.set(0)
+        frame_for_graph.pack_forget()
+        frame_for_graph_monthly.pack_forget()
+        frame_for_graph_weekly.pack_forget()
+        frame_for_graph_weekly_c6.pack_forget()
+        frame_for_graph_weekly_c12.pack_forget()
+        frame_for_graph_weekly_c3.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+
+        current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+
+        conn = sqlite3.connect(current_dir/"Data"/"weeklyEarnings.db")
+        cursor = conn.cursor()
+
+        # Get current and previous two months in abbreviated form
+        now = datetime.now()
+        month_indices = [(now.month - i - 1) % 12 + 1 for i in range(3)]  # e.g., [6, 5, 4]
+        month_names = [month_abbr[i] for i in reversed(month_indices)]   # e.g., ['Apr', 'May', 'Jun']
+
+        # Query data for these months
+        placeholders = ','.join('?' for _ in month_names)
+        query = f"SELECT Week, Month, Income FROM IncomeTable WHERE Month IN ({placeholders})"
+        cursor.execute(query, month_names)
+
+        # Prepare containers
+        weeks_set = set()
+        monthly_incomes = {month: [] for month in month_names}
+        temp_data = {month: {} for month in month_names}
+
+        # Extract numeric part from 'Week1' / 'Week 1'
+        def extract_week_number(week_str):
+            match = re.search(r'\d+', week_str)
+            return int(match.group()) if match else 0
+
+        # Load DB results
+        for week, month, income in cursor.fetchall():
+            weeks_set.add(week)
+            temp_data[month][week] = income
+
+        # Sort week labels like 'Week1', 'Week2', etc.
+        weeks = sorted(list(weeks_set), key=extract_week_number)
+
+        # Construct final monthly incomes ordered by weeks
+        for month in month_names:
+            monthly_incomes[month] = [temp_data[month].get(week, 0) for week in weeks]
+
+        conn.close()
+
+        plot_weekly_income_comparison(weeks, monthly_incomes)
+
+    elif cb6_var.get():
+        cb3_var.set(0)
+        cb12_var.set(0)
+        frame_for_graph.pack_forget()
+        frame_for_graph_monthly.pack_forget()
+        frame_for_graph_weekly.pack_forget()
+        frame_for_graph_weekly_c3.pack_forget()
+        frame_for_graph_weekly_c12.pack_forget()
+        frame_for_graph_weekly_c6.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+
+        current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+
+        conn = sqlite3.connect(current_dir/"Data"/"weeklyEarnings.db")
+        cursor = conn.cursor()
+
+        now = datetime.now()
+        # Get 6 most recent months (including current), as 3-letter abbreviations
+        month_indices = [(now.month - i - 1) % 12 + 1 for i in range(6)]
+        month_names = [month_abbr[i] for i in reversed(month_indices)]  # e.g., ['Jan', 'Feb', ..., 'Jun']
+
+        # Fetch data for these months
+        placeholders = ','.join('?' for _ in month_names)
+        query = f"SELECT Week, Month, Income FROM IncomeTable WHERE Month IN ({placeholders})"
+        cursor.execute(query, month_names)
+
+        # Prepare data structures
+        weeks_set = set()
+        monthly_incomes = {month: {} for month in month_names}
+
+        for week, month, income in cursor.fetchall():
+            weeks_set.add(week)
+            monthly_incomes[month][week] = income
+
+        # Sort week labels like 'Week1', 'Week2', etc.
+        def extract_week_number(week_str):
+            match = re.search(r'\d+', week_str)
+            return int(match.group()) if match else 0
+
+        sorted_weeks = sorted(weeks_set, key=extract_week_number)
+
+        # Fill missing data with 0
+        monthly_incomes_complete = {
+            month: [monthly_incomes[month].get(week, 0) for week in sorted_weeks]
+            for month in month_names
+        }
+
+        conn.close()
+
+        plot_weekly_income_comparison_c6(sorted_weeks, monthly_incomes_complete)
+
+    elif cb12_var.get():
+        cb6_var.set(0)
+        cb3_var.set(0)
+        frame_for_graph.pack_forget()
+        frame_for_graph_monthly.pack_forget()
+        frame_for_graph_weekly.pack_forget()
+        frame_for_graph_weekly_c3.pack_forget()
+        frame_for_graph_weekly_c6.pack_forget()
+        frame_for_graph_weekly_c12.pack(fill = X, expand = True, side = 'bottom', padx = 10, pady = (20,0),anchor = 's')
+
+        current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
+
+        conn = sqlite3.connect(current_dir/"Data"/"weeklyEarnings.db")
+        cursor = conn.cursor()
+
+        now = datetime.now()
+        # Get past 12 months as 3-letter abbreviations (e.g., 'Jul', 'Aug', ...)
+        month_indices = [(now.month - i - 1) % 12 + 1 for i in range(12)]
+        month_names = [month_abbr[i] for i in reversed(month_indices)]
+
+        # Query database
+        placeholders = ','.join('?' for _ in month_names)
+        query = f"SELECT Week, Month, Income FROM IncomeTable WHERE Month IN ({placeholders})"
+        cursor.execute(query, month_names)
+
+        # Prepare containers
+        weeks_set = set()
+        monthly_incomes = {month: {} for month in month_names}
+
+        for week, month, income in cursor.fetchall():
+            weeks_set.add(week)
+            monthly_incomes[month][week] = income
+
+        # Sort weeks like 'Week1', 'Week2', etc.
+        def extract_week_number(week_str):
+            match = re.search(r'\d+', week_str)
+            return int(match.group()) if match else 0
+
+        sorted_weeks = sorted(weeks_set, key=extract_week_number)
+
+        # Complete structure: fill missing values with 0
+        monthly_incomes_complete = {
+            month: [monthly_incomes[month].get(week, 0) for week in sorted_weeks]
+            for month in month_names
+        }
+
+        conn.close()
+    
+        plot_weekly_income_comparison_c12(sorted_weeks, monthly_incomes_complete)
+    else:
+        frame_for_graph_weekly_c3.pack_forget()
+        frame_for_graph_weekly_c6.pack_forget()
+        frame_for_graph_weekly_c12.pack_forget()
+
+def get_monthly_income_by_year(year):
+    cwd = os.getcwd()
+    current_path = os.path.join(cwd, "Data", "monthly_income_data.db")
+    conn = sqlite3.connect(current_path)
+    cursor = conn.cursor()
+
+    # Retrieve data for the specified year, ordered by month if needed
+    cursor.execute('''
+        SELECT month, income
+        FROM income
+        WHERE year = ?
+    ''', (year,))
+
+    results = cursor.fetchall()
+
+    # Separate into two lists
+    month_list = [row[0][0:3] for row in results]
+    income_list = [row[1] for row in results]
+
+    # Close the connection
+    conn.close()
+
+    plot_monthly_income_chart(month_list, income_list)
+
+
+
+def update_monthly_income(month, year, earning):
+    cwd = os.getcwd()
+    current_path = os.path.join(cwd, "Data", "monthly_income_data.db")
+    conn = sqlite3.connect(current_path)
+    cursor = conn.cursor()
+    
+    # Check if a record for this month and year already exists
+    cursor.execute('''
+        SELECT id FROM income WHERE month = ? AND year = ?
+    ''', (month, year))
+    
+    result = cursor.fetchone()
+    
+    if result:
+        # Record exists, update it
+        cursor.execute('''
+            UPDATE income SET income = ? WHERE month = ? AND year = ?
+        ''', (earning, month, year))
+    else:
+        # Record doesn't exist, insert new
+        cursor.execute('''
+            INSERT INTO income (month, year, income) VALUES (?, ?, ?)
+        ''', (month, year, earning))
+    
+    conn.commit()
+    conn.close()
 
 if check_internet():
     current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
@@ -2227,6 +2659,15 @@ if check_internet():
     frame_for_graph_weekly = Frame(dashboard_canvas, height = 350, bg ='blue')
     frame_for_graph_weekly.propagate(False)
 
+    frame_for_graph_weekly_c3 = Frame(dashboard_canvas, height = 350, bg ='blue')
+    frame_for_graph_weekly_c3.propagate(False)
+
+    frame_for_graph_weekly_c6 = Frame(dashboard_canvas, height = 350, bg ='blue')
+    frame_for_graph_weekly_c6.propagate(False)
+
+    frame_for_graph_weekly_c12 = Frame(dashboard_canvas, height = 350, bg ='blue')
+    frame_for_graph_weekly_c12.propagate(False)
+
     frame_for_graph_monthly = Frame(dashboard_canvas, height = 350, bg ='blue')
     frame_for_graph_monthly.propagate(False)
 
@@ -2234,6 +2675,25 @@ if check_internet():
     label_for_graph = ctk.CTkLabel(dashboard_canvas, text="Graph Info", font=('poppins', 15, 'bold'), fg_color="#58d68d",
                                    bg_color="white", text_color="black", height=20, width=300, corner_radius=20)
     label_for_graph.pack(side = 'bottom', anchor = 's', pady = 10)
+
+    compare_cb_label = ctk.CTkLabel(dashboard_canvas, text="Compare Past:", font=('poppins', 15, 'bold'), fg_color="White", bg_color="white",
+                                    text_color="black")
+
+    cb3_var = IntVar()
+    cb_3m = ctk.CTkCheckBox(dashboard_display, text="3 months", fg_color="white", bg_color="white", text_color="black",
+                            checkmark_color='green', border_color="black", variable=cb3_var, command= handle_graph_cb)
+ 
+
+    cb6_var = IntVar()
+    cb_6m = ctk.CTkCheckBox(dashboard_display, text="6 months", fg_color="white", bg_color="white", text_color="black",
+                            checkmark_color='green', border_color="black", variable=cb6_var, command= handle_graph_cb)
+
+
+    cb12_var = IntVar()
+    cb_12m = ctk.CTkCheckBox(dashboard_display, text="12 months", fg_color="white", bg_color="white", text_color="black",
+                            checkmark_color='green', border_color="black", variable=cb12_var, command= handle_graph_cb)
+
+
 
 
 
