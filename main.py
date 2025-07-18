@@ -252,10 +252,10 @@ def try_login ():
         find_val_username = client_info.find_one(
                 {"username": client_info_dict["username"]})
         
-        if 0 == 0 : #find_val_username:
+        if find_val_username:
             find_val_password = client_info.find_one(
                 {"password": client_info_dict["password"]})
-            if 0 == 0 : #find_val_password:
+            if find_val_password:
                 contentframe.pack_forget()
                 dashboard_frame.pack()
                 username_label.config(text= username_value)
@@ -1895,6 +1895,10 @@ def plot_weekly_income_comparison_c12(weeks, monthly_incomes):
 
 def plot_monthly_income_chart(months, monthly_totals):
     """Plots total income per month for the last 12 months."""
+
+    for widget in frame_for_graph_monthly.winfo_children():
+        widget.destroy()
+
     fig = Figure(figsize=(5, 3), dpi=100)
     ax = fig.add_subplot(111)
 
@@ -2074,7 +2078,10 @@ def graph_control_weekly():
         cb_6m.place(x = 910, y = 330)
         cb_12m.place(x = 1010, y = 330)
     else:
-        messagebox.showinfo(f"Graph Activation ({4- len(week)} weeks left)", "Don't have much data to show graph.")
+        try:
+            messagebox.showinfo(f"Graph Activation ({4- len(week)} weeks left)", "Don't have much data to show graph.")
+        except UnboundLocalError:
+            messagebox.showinfo(f"Graph Activation", "Don't have much data to show graph.")
 
 
 def graph_control_monthly():
