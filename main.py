@@ -1895,6 +1895,10 @@ def plot_weekly_income_comparison_c12(weeks, monthly_incomes):
 
 def plot_monthly_income_chart(months, monthly_totals):
     """Plots total income per month for the last 12 months."""
+
+    for widget in frame_for_graph_monthly.winfo_children():
+        widget.destroy()
+
     fig = Figure(figsize=(5, 3), dpi=100)
     ax = fig.add_subplot(111)
 
