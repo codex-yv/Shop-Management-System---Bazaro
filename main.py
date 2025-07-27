@@ -32,7 +32,7 @@ from reportlab.lib.units import mm
 import webbrowser
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-
+import requests
 
 error = 0
 otpl =[]
@@ -217,13 +217,26 @@ def new_password():
     if len(username.get().strip())<4:
         messagebox.showerror('Reset Password', f"No username found with '{username.get()}'")
     else:
-        find_val_username = client_info.find_one(
-                {"username":username.get().strip() })
-        if find_val_username:
+        client_info_dict = {
+                'username':username.get().strip(),
+                'password':None,
+            }
+        url = "http://localhost:8000/login"  # Change to your actual host/port if different
+
+        # Send GET request
+        response = requests.get(url, params=client_info_dict)
+
+        validation = response.json().get("value")
+        # find_val_username = client_info.find_one(
+        #         {"username":username.get().strip() })
+        if validation == "password":
             contentframe.pack_forget()
             pass_reset_frame.pack()
-            find_email = client_info.find_one({'username':username.get().strip()}, {'email':1})
-            new_email = find_email['email']
+            url =  f"http://127.0.0.1:8000/email/{username.get().strip()}"
+            response = requests.get(url)
+
+            email = response.json().get("value") 
+            new_email = email
             new_email_list.insert(0, new_email)
             
             threading.Thread(target=send_otp, args=(new_email,), daemon=True).start()
@@ -248,14 +261,20 @@ def try_login ():
                 'username':username_value,
                 'password':password_value,
             }
-            
-        find_val_username = client_info.find_one(
-                {"username": client_info_dict["username"]})
+        url = "http://localhost:8000/login"  # Change to your actual host/port if different
+
+        # Send GET request
+        response = requests.get(url, params=client_info_dict)
+
+        validation = response.json().get("value")
+
+        # find_val_username = client_info.find_one(
+        #         {"username": client_info_dict["username"]})
         
-        if find_val_username:
-            find_val_password = client_info.find_one(
-                {"password": client_info_dict["password"]})
-            if find_val_password:
+        if validation != "username":
+            # find_val_password = client_info.find_one(
+            #     {"password": client_info_dict["password"]})
+            if validation != "password":
                 contentframe.pack_forget()
                 dashboard_frame.pack()
                 username_label.config(text= username_value)
@@ -284,10 +303,18 @@ def reset_verify_otp():
 
 def reset_password():
     global client_info
-    
-    new_pass_update = client_info.update_one({'username': username.get().strip()}, {"$set":{'password':resetpass.get()}})
+    url = "http://localhost:8000/resetpassword"  # Change to your actual host/port if different
 
-    if new_pass_update.matched_count>0:
+    # Query parameters
+    params = {
+        "username":username.get().strip(),
+        "newpass":resetpass.get()
+    }
+    response = requests.put(url, params=params)
+    new_pass_update = response.json().get("value")
+    # new_pass_update = client_info.update_one({'username': username.get().strip()}, {"$set":{'password':resetpass.get()}})
+
+    if new_pass_update is not None:
         messagebox.showinfo('Password Reset', f'Your new password is {resetpass.get()}')
         new_pass_frame.pack_forget()
         contentframe.pack()
@@ -350,20 +377,36 @@ def verify_otp():
             'phone':int(phone_signup.get().strip())
         }
         
-        find_val = client_info.find_one({
-            "$or": [
-                {"username": client_info_dict["username"]},
-                {"phone": client_info_dict["phone"]},
-                {"email": client_info_dict["email"]}
-            ]
-        })
+        url =  "http://127.0.0.1:8000/otp"
+
+        params = {
+            "username": username_signup.get().strip(),  # Optional
+            "phone": int(phone_signup.get().strip()),     # Optional
+            "email": email_signup.get().strip()  # Optional
+        }
+        response = requests.get(url, params=params)
+
+        find_val = response.json().get("value")
         
-        if find_val:
+        # find_val = client_info.find_one({
+        #     "$or": [
+        #         {"username": client_info_dict["username"]},
+        #         {"phone": client_info_dict["phone"]},
+        #         {"email": client_info_dict["email"]}
+        #     ]
+        # })
+
+        if find_val is False:
             messagebox.showerror('', 'username/phone/email already exist. Please Retry!')
         else:
-            update_server(client_info_dict)
-        
-        
+            # update_server(client_info_dict)
+            url = "http://localhost:8000/signup" 
+            response = requests.put(url, json=client_info_dict)
+            confirm = response.json().get("value")
+            if confirm == "Done":
+                messagebox.showinfo('Verification Done', 'Sign Up Successful!')
+            else:
+                messagebox.showerror("Sign Up failed", "Please try again.")
     else:
         messagebox.showerror('Verification Error', 'incorrect OTP, please resend the otp and enter the correct one!')
 
@@ -1048,16 +1091,21 @@ def get_cc_text():
     if len(content)>0:
         now = datetime.now()
         date_time_cc = now.strftime("%Y-%m-%d %H:%M:%S")
-        email = client_info.find_one({'username':username_list[0]}, {'email':1})
-        if email:
-            Email = email['email']
+
+        url =  f"http://127.0.0.1:8000/email/{username_list[0]}"
+        response = requests.get(url)
+        email = response.json().get("value") 
+
+        # email = client_info.find_one({'username':username_list[0]}, {'email':1})
+
+        if email != "404":
             cc_message = {
-                'Email':Email,
+                'Email':email,
                 'Time': date_time_cc,
                 'Message': content_cc
             }
             cc_database.insert_one(cc_message)
-            messagebox.showinfo('Customer Care', f'Message sent successfully.The reply will sent to your email {Email}')
+            messagebox.showinfo('Customer Care', f'Message sent successfully.The reply will sent to your email {email}')
         else:
             messagebox.showerror('Customer Care', "Can't send the message! Please login again.")
     else:
@@ -1466,9 +1514,13 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
     global username_list, current_dir_his
     
     try:
-        email = client_info.find_one({'username':username_list[0]}, {'email':1})
+        url =  f"http://127.0.0.1:8000/email/{username_list[0]}"
+        response = requests.get(url)
+
+        email = response.json().get("value") 
+        # email = client_info.find_one({'username':username_list[0]}, {'email':1})
         
-        if not email:
+        if  email == "404":
             email = "None"
     except IndexError:
         email = "None"
@@ -2319,8 +2371,6 @@ if check_internet():
 
     client = pymongo.MongoClient(os.getenv('URL_Mongo'))
 
-    login_signup_database = client['Login-Signup']
-    client_info = login_signup_database.clien_infos
     win=Tk()
     win.geometry("1400x770+50+0")
     win.title("Bazaro")
@@ -2505,10 +2555,10 @@ if check_internet():
 
     phone_otp = StringVar()
 
-    email_otp_entry = ctk.CTkEntry(verification_frame, height=40,width=330, fg_color='#f2f3f4', text_color='black',
+    phone_otp_entry = ctk.CTkEntry(verification_frame, height=40,width=330, fg_color='#f2f3f4', text_color='black',
                                 border_color='#FF8A00', bg_color='white', corner_radius=20, font=('Poppins', 22),
                                 textvariable= phone_otp)
-    email_otp_entry.place(x = 910, y = 430)
+    phone_otp_entry.place(x = 910, y = 430)
     
     back_button = ctk.CTkButton(verification_frame, text="Back", font=('Poppins', 26, 'bold'), height=45, width = 40, cursor='hand2',
                                 fg_color='orange', bg_color='white', text_color='white', hover_color='black',
