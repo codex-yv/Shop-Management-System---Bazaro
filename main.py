@@ -168,18 +168,6 @@ def update_month_progress():
 
     win.after(3000, update_month_progress)
     
-def update_server(dictonary):
-    global client_info
-    
-    client_info.insert_one(dictonary)
-    messagebox.showinfo('Verification Done', 'Sign Up Successful!')    
-    
-    
-def check_server(chk_value, updt_value):
-    global client_info
-    
-    find_val = client_info.find({}, {'name':chk_value}, )
-    
 
 def send_otp(email):
     global current_dir
@@ -213,7 +201,7 @@ def send_otp(email):
         messagebox.showerror('Connection Error', 'Please Check your internet connection!')
 
 def new_password():
-    global client_info, new_email_list
+    global  new_email_list
     if len(username.get().strip())<4:
         messagebox.showerror('Reset Password', f"No username found with '{username.get()}'")
     else:
@@ -227,8 +215,7 @@ def new_password():
         response = requests.get(url, params=client_info_dict)
 
         validation = response.json().get("value")
-        # find_val_username = client_info.find_one(
-        #         {"username":username.get().strip() })
+
         if validation == "password":
             contentframe.pack_forget()
             pass_reset_frame.pack()
@@ -267,13 +254,8 @@ def try_login ():
         response = requests.get(url, params=client_info_dict)
 
         validation = response.json().get("value")
-
-        # find_val_username = client_info.find_one(
-        #         {"username": client_info_dict["username"]})
         
         if validation != "username":
-            # find_val_password = client_info.find_one(
-            #     {"password": client_info_dict["password"]})
             if validation != "password":
                 contentframe.pack_forget()
                 dashboard_frame.pack()
@@ -312,7 +294,6 @@ def reset_password():
     }
     response = requests.put(url, params=params)
     new_pass_update = response.json().get("value")
-    # new_pass_update = client_info.update_one({'username': username.get().strip()}, {"$set":{'password':resetpass.get()}})
 
     if new_pass_update is not None:
         messagebox.showinfo('Password Reset', f'Your new password is {resetpass.get()}')
@@ -366,7 +347,7 @@ def try_signup():
             
     
 def verify_otp():
-    global otpl, client_info
+    global otpl
     
     if email_otp.get() == str(otpl[0]):
         
@@ -387,14 +368,6 @@ def verify_otp():
         response = requests.get(url, params=params)
 
         find_val = response.json().get("value")
-        
-        # find_val = client_info.find_one({
-        #     "$or": [
-        #         {"username": client_info_dict["username"]},
-        #         {"phone": client_info_dict["phone"]},
-        #         {"email": client_info_dict["email"]}
-        #     ]
-        # })
 
         if find_val is False:
             messagebox.showerror('', 'username/phone/email already exist. Please Retry!')
@@ -610,14 +583,21 @@ def open_calendar1():
     ctk.CTkButton(top, text="Select", command=grab_date).pack(pady=5)
 
 def add_stock_to_dbs():
-    global inventory
-      
-    find_product_id = inventory.find_one(
-    {"Product_ID": barid.get()})
-    
-    find_product_name = inventory.find_one(
-        {"Product_Name": productname.get().lower()}
-    )
+    global inventory, r_shop_name
+
+    url = f"http://127.0.0.1:8000/productInfo/{r_shop_name}/{barid.get()}"  
+    response = requests.get(url)
+    find_product_id = response.json().get("value")
+
+    # find_product_id = inventory.find_one(
+    # {"Product_ID": barid.get()})
+    url = f"http://127.0.0.1:8000/productname/{r_shop_name}/{productname.get().lower()}"  
+    response = requests.get(url)
+    find_product_name = response.json().get("value")
+
+    # find_product_name = inventory.find_one(
+    #     {"Product_Name": }
+    # )
     
     if find_product_id or find_product_name:
         return "0"
@@ -626,7 +606,7 @@ def add_stock_to_dbs():
         
 
 def add_stock():
-    global inventory
+    global inventory, r_shop_name
     if len(barid.get())>0:
         eligibility = add_stock_to_dbs()
 
@@ -638,7 +618,10 @@ def add_stock():
             if eligibility == '0':
                 response = messagebox.askyesno("Confirm", "The Product with the given ID ot Name already exist. Do you want to update stock Quantity?")
                 if response:
-                    check_quantity = inventory.find_one({'Product_ID':barid.get()}, {'Quantity':1})
+                    url = f"http://localhost:8000/productDetail/{r_shop_name}/{barid.get()}"
+                    response = requests.get(url)
+                    check_quantity = response.json().get("value")
+                    # check_quantity = inventory.find_one({'Product_ID':barid.get()}, {'Quantity':1})
                     if check_quantity:
                         if check_quantity['Quantity'] == 0:
                             try:
@@ -648,13 +631,25 @@ def add_stock():
                                         'Manufacture_Date': mfdate.get(),
                                         'Expire_Date': expdate.get()
                                     }
-                                    
-                                    inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
-                                    
-                                    find_product_name_lc = inventory.find_one(
-                                        {"Product_ID": barid.get()}, {"Product_Name":1})
-                                    find_product_cp_lc = inventory.find_one(
-                                        {"Product_ID": barid.get()}, {"Cost_Price":1})
+
+                                    url = "http://localhost:8000/update-product-group" 
+                                    payload = {
+                                        "shopname": r_shop_name,
+                                        "pid": barid.get(),
+                                        "new_val":product_dict_to_update # or "element_val" if that's the correct field name
+                                    }
+                                    response = requests.put(url, json=payload)
+                                    # inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
+
+                                    url = f"http://localhost:8000/productDetail/{r_shop_name}/{barid.get()}"
+                                    response = requests.get(url)
+                                    find_product_name_lc = response.json().get("value")["Product_Name"]
+                                    find_product_cp_lc = response.json().get("value")["Cost_Price"]
+
+                                    # find_product_name_lc = inventory.find_one(
+                                    #     {"Product_ID": barid.get()}, {"Product_Name":1})
+                                    # find_product_cp_lc = inventory.find_one(
+                                    #     {"Product_ID": barid.get()}, {"Cost_Price":1})
                                     
                                     localhistory_update(product_id1 = barid.get(), product_name1 = find_product_name_lc, amount1 = find_product_cp_lc*float(productqty.get()), action1 = int(productqty.get()))
                                     globalhistory_update(product_id1s = barid.get(), product_name1s = find_product_name_lc ,amount1s = find_product_cp_lc*float(productqty.get()) , action1s = int(productqty.get()))
@@ -717,8 +712,14 @@ def add_stock():
                     'Expire_Date': expdate.get()
                 }
                 # print(product_dict_to_add)
-                inventory.insert_one(product_dict_to_add)
-                
+                url = "http://localhost:8000/new-stock" 
+                payload = {
+                    "shopname":r_shop_name,
+                    "inserting":product_dict_to_add
+                }
+                # inventory.insert_one(product_dict_to_add)
+                response = requests.post(url, json=payload)
+
                 localhistory_update(product_id1 = barid.get(), product_name1 = productname.get().lower(), amount1 = float(cp.get())*float(productqty.get()), action1 = int(productqty.get()))
                 globalhistory_update(product_id1s = barid.get(), product_name1s = productname.get().lower() ,amount1s = float(cp.get())*float(productqty.get()) , action1s = int(productqty.get()))
 
@@ -751,43 +752,87 @@ def analytics_back():
     inventory_display.pack(side='left')
     
 def find_item_in_update():
-    global product_id_found
+    global product_id_found, r_shop_name
     id_val = item_id_in_update.get()
-    find_product = inventory.find_one(
-        {"Product_ID": id_val}
-    )
+    url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{id_val}"
+    response = requests.get(url)
+    find_product = response.json().get("value")
+
+    # find_product = inventory.find_one(
+    #     {"Product_ID": id_val}
+    # )
     try:
         if find_product:
             find_result_label.configure( text = f"Item Found:{find_product['Product_Name']}", fg ='White', bg ='#4B54F8', width=(len(find_product)+10) )
             find_result_label.place(x = 585, y = 180) #(x = 585, y = 118)
             product_id_found['Update'] = True
-            product_id_found['UID'] = find_product['Product_ID']
+            product_id_found['UID'] = id_val
         else:
             find_result_label.configure( text = "Item Not Found!",fg ='White', bg ='red', width=15)
             find_result_label.place(x = 585, y = 180)
             product_id_found['Update'] = False
-            product_id_found['UID'] = find_product['Product_ID']
+            product_id_found['UID'] = id_val
     except TypeError:
         pass
 
 def update_product():
-    global product_id_found
+    global product_id_found, r_shop_name
     should_update = product_id_found['Update']
     update_ID = product_id_found['UID']
     if should_update is True:
         try:
+            url = "http://localhost:8000/update-product" 
             if len(newproductval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Product_Name':newproductval.get().strip()}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Product_Name",
+                    "element_var": newproductval.get().strip()  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Product_Name':newproductval.get().strip()}})
             if len(newcpval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Cost_Price':float(newcpval.get())}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Cost_Price",
+                    "element_var": float(newcpval.get())  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
+                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Cost_Price':float(newcpval.get())}})
             if len(newspval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Selling_Price':float(newspval.get())}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Selling_Price",
+                    "element_var": float(newspval.get()) # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
+                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Selling_Price':float(newspval.get())}})
             if len(newtaxval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Tax':float(newtaxval.get())}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Tax",
+                    "element_var": float(newtaxval.get())  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
+                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Tax':float(newtaxval.get())}})
             if len(newdiscountval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Discount':float(newdiscountval.get())}})
-            else:
-                messagebox.showinfo('Update', 'Updated!')
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Discount",
+                    "element_var": float(newdiscountval.get())  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
+                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Discount':float(newdiscountval.get())}})
+            
+            messagebox.showinfo('Update', 'Updated!')
         except ValueError:
             messagebox.showerror('Invalid Input/s', 'Cost Price, Selling Price, Tax and Discount should not be any alphabet and should be greater than zero')
     else:
@@ -804,11 +849,15 @@ def delete_update_entries():
     find_result_label.place_forget()
 
 def fetch_and_display_inventory():
+    global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    data = list(inventory.find())
+    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    data = response.json()
+    # data = list(inventory.find())
     if not data:
         analytics_board.insert(END, "No data found in the database.")
         return
@@ -859,22 +908,31 @@ def fetch_and_display_inventory():
     analytics_board.config(state=DISABLED)
     
 def analytics_idsrc_display():
+    global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
-    find_product_id = inventory.find_one(
-        {'Product_ID':analytics_src_val.get()}
-    )
+    url = f"http://127.0.0.1:8000/productInfo/{r_shop_name}/{analytics_src_val.get()}"
+    response = requests.get(url)
+    find_product_id = response.json().get("value")
+
+    # find_product_id = inventory.find_one(
+    #     {'Product_ID':analytics_src_val.get()}
+    # )
+
     if find_product_id:
-        product_dict = inventory.find_one(
-            {'Product_ID':analytics_src_val.get()},
-            {"Product_Name": 1,
-             "Cost_Price": 1,
-             "Selling_Price": 1,
-             "Manufacture_Date": 1,
-             "Expire_Date": 1,
-             "Tax": 1,
-             "Discount": 1}
-        )
+        url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{analytics_src_val.get()}"
+        response = requests.get(url)
+        product_dict = response.json().get("value")
+        # product_dict = inventory.find_one(
+        #     {'Product_ID':analytics_src_val.get()},
+        #     {"Product_Name": 1,
+        #      "Cost_Price": 1,
+        #      "Selling_Price": 1,
+        #      "Manufacture_Date": 1,
+        #      "Expire_Date": 1,
+        #      "Tax": 1,
+        #      "Discount": 1}
+        # )
         arranged_product = f'''
 #######---- Product Found ----#######
 
@@ -894,11 +952,15 @@ Discount:         {product_dict['Discount']}
 # analytics_option = ['All', 'Cost, Selling Price', 'Product, Selling Price','Product, Cost Price', 'Product, Discount', 'Product, Tax', 'Product, Tax, Discount']
 
 def fetch_and_display_analytics(selected_columns):
+    global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    data = list(inventory.find())
+    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    data = response.json()
+    # data = list(inventory.find())
     if not data:
         analytics_board.insert(END, "No data found in the database.")
         return
@@ -981,7 +1043,7 @@ def option_selected(choice):
 
 
 def export_inventory_to_excel(selected_columns):
-
+    global r_shop_name
     file_path = filedialog.asksaveasfilename(
         defaultextension=".xlsx",
         filetypes=[("Excel files", "*.xlsx")],
@@ -993,7 +1055,10 @@ def export_inventory_to_excel(selected_columns):
         return
 
     # Fetch data from MongoDB
-    data = list(inventory.find())
+    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    data = response.json()
+    # data = list(inventory.find())
     if not data:
         print("No data found in the database.")
         return
@@ -1096,7 +1161,6 @@ def get_cc_text():
         response = requests.get(url)
         email = response.json().get("value") 
 
-        # email = client_info.find_one({'username':username_list[0]}, {'email':1})
 
         if email != "404":
             cc_message = {
@@ -1111,17 +1175,22 @@ def get_cc_text():
     else:
         messagebox.showerror('Customer Care', "Can't send empty message!")
 def insert_in_alert_textbox(idee):
-    show_data = inventory.find_one(
-        {'Product_ID':idee},
-        {"Product_Name": 1,
-         "Quantity":1,
-        "Cost_Price": 1,
-        "Selling_Price": 1,
-        "Manufacture_Date": 1,
-        "Expire_Date": 1,
-        "Tax": 1,
-        "Discount": 1}
-    )
+    global r_shop_name
+    url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{idee}"
+    response = requests.get(url)
+    show_data = response.json().get("value")
+
+    # show_data = inventory.find_one(
+    #     {'Product_ID':idee},
+    #     {"Product_Name": 1,
+    #      "Quantity":1,
+    #     "Cost_Price": 1,
+    #     "Selling_Price": 1, 
+    #     "Manufacture_Date": 1,
+    #     "Expire_Date": 1,
+    #     "Tax": 1,
+    #     "Discount": 1}
+    # )
     data_insert_alert_txtbx = f'''
 Product_ID:       {idee},
 Product_Name:     {show_data['Product_Name']},
@@ -1155,13 +1224,17 @@ def on_row_selected_stock(value):
             insert_in_alert_textbox(product_id)
 
 def insert_data_to_alert_treeview():
-    
+    global r_shop_name
     for items in alert_tree_expire.get_children():
         alert_tree_expire.delete(items)
         
     alert_tree_expire.tag_configure('expiring_soon', foreground='red')
     alert_tree_expire.tag_configure('expiring_late', foreground='green')
-    inventory_data = inventory.find({})
+    
+    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    inventory_data = response.json()
+    # inventory_data = inventory.find({})                   
     count = 1
     
     date_format = "%d/%m/%Y"
@@ -1188,7 +1261,12 @@ def insert_data_to_alert_treeview():
         
         
 def insert_data_to_alert_treeview_stock():
-    inventory_data = inventory.find({})
+    global r_shop_name
+    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    inventory_data = response.json()
+
+    # inventory_data = inventory.find({})
     for items in alert_tree_stock.get_children():
         alert_tree_stock.delete(items)
     
@@ -1249,7 +1327,13 @@ def total_amount(pdct_price, pdct_qty, sgst, cgst, discount):
         actual_amount = ((pdct_price*pdct_qty)+sgst+cgst)
         return actual_amount - discount_value
 def check_product_quantity(pdct_qty, pdct_id):
-    find_quantity = inventory.find_one({"Product_ID":pdct_id},{"Quantity":1})
+    global r_shop_name
+    url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{pdct_id}"
+    response = requests.get(url)
+    find_quantity = response.json().get("value")
+
+    # find_quantity = inventory.find_one({"Product_ID":pdct_id},{"Quantity":1})
+
     if find_quantity["Quantity"] >= pdct_qty+1:
         return True
     else:
@@ -1258,18 +1342,24 @@ def check_product_quantity(pdct_qty, pdct_id):
 billing_slno = 1
 product_ids = []
 def billing_tree_insert(value):
-    global billing_slno, product_ids
-
-    inv_data = inventory.find_one({'Product_ID':barcodevalue.get()})
+    global billing_slno, product_ids, r_shop_name
+    url = f"http://127.0.0.1:8000/productInfo/{r_shop_name}/{barcodevalue.get()}"
+    response = requests.get(url)
+    inv_data = response.json().get("value")
+    # inv_data = inventory.find_one({'Product_ID':barcodevalue.get()})
     
     if inv_data:
-        product_dict_bill = inventory.find_one(
-            {'Product_ID':barcodevalue.get()},
-            {"Product_Name": 1,
-            "Selling_Price": 1,
-            "Tax": 1,
-            "Discount": 1}
-        )
+        url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{barcodevalue.get()}"
+        response = requests.get(url)
+        product_dict_bill = response.json().get("value")
+
+        # product_dict_bill = inventory.find_one(
+        #     {'Product_ID':barcodevalue.get()},
+        #     {"Product_Name": 1,
+        #     "Selling_Price": 1,
+        #     "Tax": 1,
+        #     "Discount": 1}
+        # )
 
         for item0 in billing_tree.get_children():
             values0 = billing_tree.item(item0)["values"]
@@ -1348,7 +1438,7 @@ def gen_bill_win():
     global payment_method
     
     def save_and_print():
-        global payment_method
+        global payment_method, r_shop_name
         filename = f"Bill_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         full_path = os.path.join(save_path, filename)
 
@@ -1374,11 +1464,22 @@ def gen_bill_win():
         messagebox.showinfo("Bill Saved", "Bill Saved Successfully.")
         
         for pdid, itemm in data_dict.items():
-            result_found = inventory.update_one(
-                {"Product_ID": str(pdid)},
-                {"$inc": {"Quantity": -int(itemm["Quantity"])}}
-            )
-            if result_found.matched_count <= 0:
+            url = "http://localhost:8000/stocks"  
+
+            params = {
+                "pdid": str(pdid),
+                "quantity": int(itemm["Quantity"]),
+                "shopname": r_shop_name
+            }
+
+            # Make the PUT request
+            response = requests.put(url, params=params)
+            result_found = response.json().get("value")
+            # result_found = inventory.update_one(
+            #     {"Product_ID": str(pdid)},
+            #     {"$inc": {"Quantity": -int(itemm["Quantity"])}}
+            # )
+            if result_found <= 0:
                 print("Can't update the db")
         
             localhistory_update(product_id1 = pdid, product_name1 = itemm["Product Name"],amount1 = itemm["Amount"], action1 = -int(itemm["Quantity"]))
@@ -1518,7 +1619,6 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
         response = requests.get(url)
 
         email = response.json().get("value") 
-        # email = client_info.find_one({'username':username_list[0]}, {'email':1})
         
         if  email == "404":
             email = "None"
