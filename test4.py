@@ -11,3 +11,9 @@ try:
     print(type(data))
 except requests.exceptions.RequestException as e:
     print("Request failed")
+
+try:
+    response = requests.get(url)
+    response.raise_for_status()
+except requests.exceptions.ConnectionError as e:
+    print("Connection failed:", e)
