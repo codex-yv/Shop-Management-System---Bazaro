@@ -8,6 +8,8 @@ from pathlib import Path
 from pymongo import MongoClient
 import socket
 from dotenv import load_dotenv
+import requests
+
 shopid = []
 shopnameID = []
 
@@ -68,13 +70,18 @@ def generate_shop_id():
     global shopid
     
     shop_id = "BZ" + ''.join(random.choices(string.digits + string.ascii_uppercase, k=6))
-    find_if_dup = collection.find_one({"ShopID":shop_id})
+    element = "ShopID"
+    url = f"http://127.0.0.1:8000/firstrunner-single/{element}/{shop_id}"
+    response = requests.get(url)
+    find_if_dup = response.json()
+    # find_if_dup = collection.find_one({"ShopID":shop_id})
     if not find_if_dup:
         shopid.insert(0, shop_id)
         generated_id_label.configure(text=f"Generated Shop ID: {shop_id}\nPlease write this ID somewhere.")
         generated_id_label.place(x = 20, y = 220)
     else:
         generate_shop_id()
+       
     
 def clear_generated_id():
     generated_id_label.configure(text="")
@@ -90,9 +97,19 @@ def open_tnc():
         elif listed_yes_var.get():
             if shopid_entry.get():
                 shop_name = shopname_entry.get().title().replace(' ', '') + shopid_entry.get().strip()
-                find_shopnameID = collection.find_one({"Shopname ID":shop_name})
+                element = "Shopname ID"
+                url = f"http://127.0.0.1:8000/firstrunner-single/{element}/{shop_name}"
+                response = requests.get(url)
+                find_shopnameID = response.json()
+
+                # find_shopnameID = collection.find_one({"Shopname ID":shop_name})
                 if find_shopnameID:
-                    find_if_multi = collection.find_one({"Shopname ID":shop_name}, {"Multi Store":1})
+                    element = "Shopname ID"
+                    felement = "Multi Store"
+                    url = f"http://127.0.0.1:8000/firstrunner-multi/{element}/{shop_name}/{felement}"
+                    response = requests.get(url)
+                    find_if_multi = response.json()
+                    # find_if_multi = collection.find_one({"Shopname ID":shop_name}, {"Multi Store":1})
                     if find_if_multi["Multi Store"] == 1:
                         shopnameID.insert(0, shop_name)
                         shop_details_frame.pack_forget()
@@ -120,14 +137,26 @@ def insert_shopname_to_txt():
     with open(filename, "w") as file:
         file.write(shop_name)
     file.close()
-
-    collection.insert_one({
+    to_add = {
         "ShopID": shopid[0],
         "Shop Name":shopname_entry.get().title(),
         "Shopname ID":shop_name,
         "Multi Store": multi_yes_var.get(),
         "Total Users": 1 
-    })
+    }
+    url = f"http://127.0.0.1:8000/firstrunner-insert"
+    payload = {
+        "to_add":to_add
+    }
+    response = requests.post(url, json=payload)
+
+    # collection.insert_one({
+    #     "ShopID": shopid[0],
+    #     "Shop Name":shopname_entry.get().title(),
+    #     "Shopname ID":shop_name,
+    #     "Multi Store": multi_yes_var.get(),
+    #     "Total Users": 1 
+    # })
     
 def on_submit():
     global shopnameID
@@ -142,9 +171,17 @@ def on_submit():
             with open(filename, "w") as file:
                 file.write(shopnameID[0])
             file.close()
-            total_users_get = collection.find_one({"Shopname ID":shopnameID[0]}, {"Total Users":1})
-            total_users_count = total_users_get["Total Users"] + 1
-            collection.update_one({"Shopname ID":shopnameID[0]}, {"$set":{"Total Users":total_users_count}})
+            element = "Shopname ID"
+            felement = "Total Users"
+            url = f"http://127.0.0.1:8000/firstrunner-multi/{element}/{shopnameID[0]}/{felement}"
+            response = requests.get(url)
+            total_users_get = response.json()
+            # total_users_get = collection.find_one({"Shopname ID":shopnameID[0]}, {"Total Users":1})
+            total_users_count = int(total_users_get["Total Users"]) + 1
+
+            url = f"http://127.0.0.1:8000/firstrunner-update/{shopnameID[0]}/{int(total_users_count)}"
+            response = requests.put(url)
+            # collection.update_one({"Shopname ID":shopnameID[0]}, {"$set":{"Total Users":total_users_count}})
             messagebox.showinfo("Success", "Thank you for agreeing. You may proceed.")
         # Proceed to next step in app setup
     else:
@@ -155,16 +192,6 @@ def on_submit():
         
 # Configure CTk appearance
 current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-envars_db = current_dir/ ".env"
-load_dotenv(envars_db)
-
-# Initialize the client
-client = MongoClient(os.getenv('URL_Mongo'))
-
-db = client['Login-Signup']
-
-# Access a collection
-collection = db['ShopnameId']
 
 if check_internet():
     setup_win = Tk()

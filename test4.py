@@ -10,4 +10,4 @@ try:
     data = response.json().get("value")
     print(type(data))
 except requests.exceptions.RequestException as e:
-    print("Request failed:", e)
+    print("Request failed")

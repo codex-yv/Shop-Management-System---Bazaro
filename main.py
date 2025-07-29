@@ -79,19 +79,26 @@ def get_percentage_of_day():
     return (seconds_passed / total_seconds_in_day) * 100
 
 def update_progress():
-    
-    percentage = get_percentage_of_day()
+    def run():
+        while True:
+            percentage = get_percentage_of_day()
+            update_earnings()
+            var = "Daily_Income"
+            url = f"http://127.0.0.1:8000//earnings/{r_shop_name}/{var}"
+            try:
+                response = requests.get(url)
+                daily_ern = response.json().get("value")
+                win.after(0, lambda: update_daily_gui(daily_ern, percentage))
+            except Exception as e:
+                print(f"Error in update_progress: {e}")
+            time.sleep(5)
+    threading.Thread(target=run, daemon=True).start()
 
-    update_earnings()
-
-    daily_ern = earnings.find_one({"Earning_ID":101}, {"Daily_Income":1})
-    
-    daily_income_profit.configure(text = daily_ern["Daily_Income"])
-
-    # progress_var.set(percentage)
-    daily_progress.set(get_percentage_of_day() / 100) 
+def update_daily_gui(daily_ern, percentage):
+    if daily_ern:
+        daily_income_profit.configure(text=daily_ern.get("Daily_Income", "N/A"))
+    daily_progress.set(percentage / 100)
     daily_progress_label.configure(text=f"{percentage:.2f}% day completed")
-    win.after(3000, update_progress)
 
 def generate_otp():
     return random.randint(100000, 999999)
@@ -119,16 +126,26 @@ def get_fraction_of_week():
     return (day_count/7)*100
 
 def update_week_progress():
-    
-    day_frac = get_fraction_of_week()    
-    
-    weekly_ern = earnings.find_one({"Earning_ID":101}, {"Weekly_Income":1})
-    
-    weekly_income_profit.configure(text = weekly_ern["Weekly_Income"])
-    
-    weekly_progress.set(day_frac/100)
-    
-    win.after(3000, update_week_progress)
+    def run():
+        while True:
+            day_frac = get_fraction_of_week()
+            var = "Weekly_Income"
+            url = f"http://127.0.0.1:8000//earnings/{r_shop_name}/{var}"
+            try:
+                response = requests.get(url)
+                weekly_ern = response.json().get("value")
+                win.after(0, lambda: update_weekly_gui(weekly_ern, day_frac))
+            except Exception as e:
+                print(f"Error in update_week_progress: {e}")
+            time.sleep(6)
+    threading.Thread(target=run, daemon=True).start()
+
+def update_weekly_gui(weekly_ern, day_frac):
+    if weekly_ern:
+        weekly_income_profit.configure(text=weekly_ern.get("Weekly_Income", "N/A"))
+    weekly_progress.set(day_frac / 100)
+
+
 
 month_days = {
     1: 31,   # January
@@ -157,45 +174,35 @@ def get_monthly_percent():
     return (date/days)*100
 
 def update_month_progress():
+    def run():
+        while True:
+            month_frac = get_monthly_percent()
+            var = "Monthly_Income"
+            url = f"http://127.0.0.1:8000//earnings/{r_shop_name}/{var}"
+            try:
+                response = requests.get(url)
+                monthly_ern = response.json().get("value")
+                win.after(0, lambda: update_monthly_gui(monthly_ern, month_frac))
+            except Exception as e:
+                print(f"Error in update_month_progress: {e}")
+            time.sleep(7)
+    threading.Thread(target=run, daemon=True).start()
     
-    month_frac = get_monthly_percent()
-    
-    monthly_ern = earnings.find_one({"Earning_ID":101}, {"Monthly_Income":1})
-    
-    monthly_income_profit.configure(text = monthly_ern["Monthly_Income"])
-    
-    monthly_progress.set(month_frac/100)
+def update_monthly_gui(monthly_ern, month_frac):
+    if monthly_ern:
+        monthly_income_profit.configure(text=monthly_ern.get("Monthly_Income", "N/A"))
+    monthly_progress.set(month_frac / 100)
 
-    win.after(3000, update_month_progress)
-    
 
 def send_otp(email):
     global current_dir
     if check_internet():
         otp = generate_otp()
         otpl.insert(0,otp)
+
+        url = f"http://127.0.0.1:8000/email-service/{email}/{otp}"
+        response = requests.post(url)
         
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        
-        envars = current_dir/ ".env" # create .env file in current folder
-
-        load_dotenv(envars)
-
-        sender_email = os.getenv('EMAIL') #add your email in .env file
-        sender_key = os.getenv('KEY') # add gamil app passwords in .env file
-
-        server.login(sender_email, sender_key)
-        to_mail = email
-
-        msg = EmailMessage()
-
-        msg['Subject'] = 'OTP verification'
-        msg['From'] = 'ytgamings802212@gmail.com'
-        msg['to'] = to_mail
-
-        msg.set_content("Your OTP is " + str(otp))
-        server.send_message(msg)
         messagebox.showinfo('OTP send', 'OTP send!')
     else:
         messagebox.showerror('Connection Error', 'Please Check your internet connection!')
@@ -594,10 +601,6 @@ def add_stock_to_dbs():
     url = f"http://127.0.0.1:8000/productname/{r_shop_name}/{productname.get().lower()}"  
     response = requests.get(url)
     find_product_name = response.json().get("value")
-
-    # find_product_name = inventory.find_one(
-    #     {"Product_Name": }
-    # )
     
     if find_product_id or find_product_name:
         return "0"
@@ -645,11 +648,6 @@ def add_stock():
                                     response = requests.get(url)
                                     find_product_name_lc = response.json().get("value")["Product_Name"]
                                     find_product_cp_lc = response.json().get("value")["Cost_Price"]
-
-                                    # find_product_name_lc = inventory.find_one(
-                                    #     {"Product_ID": barid.get()}, {"Product_Name":1})
-                                    # find_product_cp_lc = inventory.find_one(
-                                    #     {"Product_ID": barid.get()}, {"Cost_Price":1})
                                     
                                     localhistory_update(product_id1 = barid.get(), product_name1 = find_product_name_lc, amount1 = find_product_cp_lc*float(productqty.get()), action1 = int(productqty.get()))
                                     globalhistory_update(product_id1s = barid.get(), product_name1s = find_product_name_lc ,amount1s = find_product_cp_lc*float(productqty.get()) , action1s = int(productqty.get()))
@@ -711,13 +709,11 @@ def add_stock():
                     'Manufacture_Date': mfdate.get(),
                     'Expire_Date': expdate.get()
                 }
-                # print(product_dict_to_add)
                 url = "http://localhost:8000/new-stock" 
                 payload = {
                     "shopname":r_shop_name,
                     "inserting":product_dict_to_add
                 }
-                # inventory.insert_one(product_dict_to_add)
                 response = requests.post(url, json=payload)
 
                 localhistory_update(product_id1 = barid.get(), product_name1 = productname.get().lower(), amount1 = float(cp.get())*float(productqty.get()), action1 = int(productqty.get()))
@@ -758,9 +754,6 @@ def find_item_in_update():
     response = requests.get(url)
     find_product = response.json().get("value")
 
-    # find_product = inventory.find_one(
-    #     {"Product_ID": id_val}
-    # )
     try:
         if find_product:
             find_result_label.configure( text = f"Item Found:{find_product['Product_Name']}", fg ='White', bg ='#4B54F8', width=(len(find_product)+10) )
@@ -790,7 +783,6 @@ def update_product():
                     "element_var": newproductval.get().strip()  # or "element_val" if that's the correct field name
                 }
                 response = requests.put(url, json=payload)
-                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Product_Name':newproductval.get().strip()}})
             if len(newcpval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -800,7 +792,6 @@ def update_product():
                 }
                 response = requests.put(url, json=payload)
 
-                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Cost_Price':float(newcpval.get())}})
             if len(newspval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -810,7 +801,6 @@ def update_product():
                 }
                 response = requests.put(url, json=payload)
 
-                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Selling_Price':float(newspval.get())}})
             if len(newtaxval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -820,7 +810,6 @@ def update_product():
                 }
                 response = requests.put(url, json=payload)
 
-                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Tax':float(newtaxval.get())}})
             if len(newdiscountval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -830,8 +819,6 @@ def update_product():
                 }
                 response = requests.put(url, json=payload)
 
-                # inventory.update_one({'Product_ID': update_ID}, {"$set":{'Discount':float(newdiscountval.get())}})
-            
             messagebox.showinfo('Update', 'Updated!')
         except ValueError:
             messagebox.showerror('Invalid Input/s', 'Cost Price, Selling Price, Tax and Discount should not be any alphabet and should be greater than zero')
@@ -857,7 +844,7 @@ def fetch_and_display_inventory():
     url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
     response = requests.get(url)
     data = response.json()
-    # data = list(inventory.find())
+
     if not data:
         analytics_board.insert(END, "No data found in the database.")
         return
@@ -915,24 +902,12 @@ def analytics_idsrc_display():
     response = requests.get(url)
     find_product_id = response.json().get("value")
 
-    # find_product_id = inventory.find_one(
-    #     {'Product_ID':analytics_src_val.get()}
-    # )
 
     if find_product_id:
         url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{analytics_src_val.get()}"
         response = requests.get(url)
         product_dict = response.json().get("value")
-        # product_dict = inventory.find_one(
-        #     {'Product_ID':analytics_src_val.get()},
-        #     {"Product_Name": 1,
-        #      "Cost_Price": 1,
-        #      "Selling_Price": 1,
-        #      "Manufacture_Date": 1,
-        #      "Expire_Date": 1,
-        #      "Tax": 1,
-        #      "Discount": 1}
-        # )
+
         arranged_product = f'''
 #######---- Product Found ----#######
 
@@ -1150,7 +1125,7 @@ def save_analytics_display():
         messagebox.showerror('IndexError', 'No parameter Found!')
 
 def get_cc_text():
-    global username_list
+    global username_list, r_shop_name
     print(username_list[0])
     content_cc = cc_textbox.get("0.0", "end")  # "0.0" = start, "end-1c" = end minus last newline
     if len(content)>0:
@@ -1164,11 +1139,18 @@ def get_cc_text():
 
         if email != "404":
             cc_message = {
+                'Shop':r_shop_name,
                 'Email':email,
                 'Time': date_time_cc,
                 'Message': content_cc
             }
-            cc_database.insert_one(cc_message)
+
+            url = "http://127.0.0.1:8000/ccmessage"
+            payload = {
+                "message":cc_message
+            }
+            response = requests.post(url, json=payload)
+
             messagebox.showinfo('Customer Care', f'Message sent successfully.The reply will sent to your email {email}')
         else:
             messagebox.showerror('Customer Care', "Can't send the message! Please login again.")
@@ -1612,7 +1594,7 @@ def localhistory_update(product_id1, product_name1,amount1, action1):
 
     
 def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
-    global username_list, current_dir_his
+    global username_list, current_dir_his, r_shop_name
     
     try:
         url =  f"http://127.0.0.1:8000/email/{username_list[0]}"
@@ -1643,7 +1625,15 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
         "action" : action1s
     }
 
-    global_history.insert_one(glob_history_dict)
+    url = "http://127.0.0.1:8000/add-global-data"
+    payload = {
+        "shopname":r_shop_name,
+        "inserting":glob_history_dict
+    }
+
+    response = requests.post(url, json=payload)
+
+    # global_history.insert_one(glob_history_dict)
 
         
 def show_local_history_data():
@@ -1682,10 +1672,15 @@ def show_local_history_data():
             history_tree.insert("", END, values = history_data_format, tags=("buy",))
 
 def show_global_history_data():
+    global r_shop_name
     for item in glo_history_tree.get_children():
         glo_history_tree.delete(item)
-        
-    glob_history_data = global_history.find()
+    
+    url = f"http://127.0.0.1:8000/global-history/{r_shop_name}"
+    response = requests.get(url)
+    glob_history_data = response.json()
+
+    # glob_history_data = global_history.find()
 
     glo_history_tree.tag_configure('sell', foreground="#f92d2d")  
     glo_history_tree.tag_configure('buy', foreground="#229954")
@@ -1752,8 +1747,11 @@ sum_amount_week = 0
 sum_amount_month = 0
 
 def update_earnings():
-    global sum_amount_day, sum_amount_month, sum_amount_week
-    globalhistory_data = list(global_history.find())
+    global sum_amount_day, sum_amount_month, sum_amount_week, r_shop_name
+    url = f"http://127.0.0.1:8000/global-history/{r_shop_name}"
+    response = requests.get(url)
+    globalhistory_data = response.json()
+    # globalhistory_data = list(global_history.find())
     if globalhistory_data:
         now = datetime.now()
 
@@ -1798,14 +1796,25 @@ def update_earnings():
     upsert_income(tdate2, sum_amount_day)
     upsert_income_weekly(wn_name, month, sum_amount_week)
 
-    update_earning = earnings.update_one({"Earning_ID":101},
-                                         {
-                                             "$set":{
-                                                 "Daily_Income":sum_amount_day,
-                                                 "Weekly_Income":sum_amount_week,
-                                                 "Monthly_Income":sum_amount_month
-                                             }
-                                         })
+    update_dict = {
+        "Daily_Income":sum_amount_day,
+        "Weekly_Income":sum_amount_week,
+        "Monthly_Income":sum_amount_month
+    }
+    url = "http://127.0.0.1:8000/updated-earnings"
+    payload = {
+        "shopname": r_shop_name,
+        "inserting": update_dict
+    }
+    response = requests.put(url, json=payload)
+    # update_earning = earnings.update_one({"Earning_ID":101},
+    #                                      {
+    #                                          "$set":{
+    #                                              "Daily_Income":sum_amount_day,
+    #                                              "Weekly_Income":sum_amount_week,
+    #                                              "Monthly_Income":sum_amount_month
+    #                                          }
+    #                                      })
     sum_amount_day = 0  
     sum_amount_week = 0
     sum_amount_month = 0
@@ -2465,11 +2474,7 @@ def update_monthly_income(month, year, earning):
 
 if check_internet():
     current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-    envars_db = current_dir/ ".env" # create .env file in current folder
-
-    load_dotenv(envars_db)
-
-    client = pymongo.MongoClient(os.getenv('URL_Mongo'))
+    
 
     win=Tk()
     win.geometry("1400x770+50+0")
@@ -2692,13 +2697,12 @@ if check_internet():
         messagebox.showerror('Read Error',f"An error occurred while reading the file '{file_path}'.")
 
     r_shop_name = shop_name[1:]
+
+    url = f"http://127.0.0.1:8000/activated/{r_shop_name}"
+    response = requests.get(url)
     
-    shop_database = client[r_shop_name]
-    inventory = shop_database.stock_inventory
-    global_history = shop_database.Global_History
-    earnings = shop_database.Earnings
     
-    db_file_er = current_dir/"Data"/"decide.db"
+    db_file_er = os.path.join(current_dir, "Data", "decide.db")
 
     # Connect to the SQLite database
     conn_ern = sqlite3.connect(db_file_er)
@@ -2719,7 +2723,12 @@ if check_internet():
         }
 
         # Insert the data
-        insert_result = earnings.insert_one(data_ern)
+        url = f"http://127.0.0.1:8000/add-new-earning"
+        payload = {
+            "shopname":r_shop_name,
+            "inserting":data_ern
+        }
+        responses = requests.post(url, json=payload) 
         print("INSERTED")
         cursor_ern.execute('''
             UPDATE mongoEarnings
@@ -2731,10 +2740,6 @@ if check_internet():
         conn_ern.commit()
     conn_ern.close()
         
-        
-    customer_care_database = client['Customer-Care']
-    cc_database = customer_care_database.cc_messages
-    
     
     dashboard_frame=Frame(win,height=770,width=1400,bg='red')
     dashboard_frame.propagate(False)
