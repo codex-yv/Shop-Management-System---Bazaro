@@ -1,19 +1,29 @@
 import requests
-username_list = ["youraj Verma"]
-# Replace 'john_doe' with the username you want to query
+import time
+url = "https://sms-backend-90tc.onrender.com/login"
+payload = {
+    "username":"Youraj Verma",
+    "password":"856856"
+}
+response = requests.get(url, params=payload)
+print(response.json())
 
-url = f"http://127.0.0.1:8000/email/{username_list[0]}"
+url = "https://sms-backend-90tc.onrender.com"
+response = requests.get(url)
+value = response.json()
+print(value)
+# def find():
+#     try:
+        
+        
+#     except requests.exceptions.RequestException as e:
+#         print(f"Error in find(): ")
 
-try:
-    response = requests.get(url)
-    response.raise_for_status()  # Raises HTTPError for bad responses
-    data = response.json().get("value")
-    print(type(data))
-except requests.exceptions.RequestException as e:
-    print("Request failed")
-
-try:
-    response = requests.get(url)
-    response.raise_for_status()
-except requests.exceptions.ConnectionError as e:
-    print("Connection failed:", e)
+# while True:
+#     try:
+        
+#     except requests.exceptions.RequestException as e:
+#         print(f"Error in find(): ")
+#     time.sleep(1)
+#     find()
+#     time.sleep(1)

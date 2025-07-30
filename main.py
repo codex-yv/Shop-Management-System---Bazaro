@@ -79,26 +79,25 @@ def get_percentage_of_day():
     return (seconds_passed / total_seconds_in_day) * 100
 
 def update_progress():
-    def run():
-        while True:
-            percentage = get_percentage_of_day()
-            update_earnings()
-            var = "Daily_Income"
-            url = f"http://127.0.0.1:8000//earnings/{r_shop_name}/{var}"
-            try:
-                response = requests.get(url)
-                daily_ern = response.json().get("value")
-                win.after(0, lambda: update_daily_gui(daily_ern, percentage))
-            except Exception as e:
-                print(f"Error in update_progress: {e}")
-            time.sleep(5)
-    threading.Thread(target=run, daemon=True).start()
-
-def update_daily_gui(daily_ern, percentage):
-    if daily_ern:
+    update_earnings()
+    var = "Daily_Income"
+    url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
+    try:
+        response = requests.get(url)
+        daily_ern = response.json().get("value")
         daily_income_profit.configure(text=daily_ern.get("Daily_Income", "N/A"))
+
+    except Exception as e:
+        print(f"Error in update_progress: {e}")
+
+
+def update_daily_gui():
+    percentage = get_percentage_of_day()
+        
     daily_progress.set(percentage / 100)
     daily_progress_label.configure(text=f"{percentage:.2f}% day completed")
+    win.after(1000, update_daily_gui)
+
 
 def generate_otp():
     return random.randint(100000, 999999)
@@ -126,24 +125,20 @@ def get_fraction_of_week():
     return (day_count/7)*100
 
 def update_week_progress():
-    def run():
-        while True:
-            day_frac = get_fraction_of_week()
-            var = "Weekly_Income"
-            url = f"http://127.0.0.1:8000//earnings/{r_shop_name}/{var}"
-            try:
-                response = requests.get(url)
-                weekly_ern = response.json().get("value")
-                win.after(0, lambda: update_weekly_gui(weekly_ern, day_frac))
-            except Exception as e:
-                print(f"Error in update_week_progress: {e}")
-            time.sleep(6)
-    threading.Thread(target=run, daemon=True).start()
-
-def update_weekly_gui(weekly_ern, day_frac):
-    if weekly_ern:
+    var = "Weekly_Income"
+    url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
+    try:
+        response = requests.get(url)
+        weekly_ern = response.json().get("value")
         weekly_income_profit.configure(text=weekly_ern.get("Weekly_Income", "N/A"))
+    except Exception as e:
+        print(f"Error in update_week_progress: {e}")
+      
+
+def update_weekly_gui():
+    day_frac = get_fraction_of_week()
     weekly_progress.set(day_frac / 100)
+    win.after(2000, update_weekly_gui)
 
 
 
@@ -174,25 +169,28 @@ def get_monthly_percent():
     return (date/days)*100
 
 def update_month_progress():
-    def run():
-        while True:
-            month_frac = get_monthly_percent()
-            var = "Monthly_Income"
-            url = f"http://127.0.0.1:8000//earnings/{r_shop_name}/{var}"
-            try:
-                response = requests.get(url)
-                monthly_ern = response.json().get("value")
-                win.after(0, lambda: update_monthly_gui(monthly_ern, month_frac))
-            except Exception as e:
-                print(f"Error in update_month_progress: {e}")
-            time.sleep(7)
-    threading.Thread(target=run, daemon=True).start()
     
-def update_monthly_gui(monthly_ern, month_frac):
-    if monthly_ern:
+    var = "Monthly_Income"
+    url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
+    try:
+        response = requests.get(url)
+        monthly_ern = response.json().get("value")
         monthly_income_profit.configure(text=monthly_ern.get("Monthly_Income", "N/A"))
-    monthly_progress.set(month_frac / 100)
+        
+    except Exception as e:
+        print(f"Error in update_month_progress: {e}")
 
+    
+def update_monthly_gui():
+    month_frac = get_monthly_percent()
+
+    monthly_progress.set(month_frac / 100)
+    win.after(3000, lambda: update_monthly_gui)
+
+def refreshEarnings():
+    update_progress()
+    update_week_progress()
+    update_month_progress()
 
 def send_otp(email):
     global current_dir
@@ -200,7 +198,7 @@ def send_otp(email):
         otp = generate_otp()
         otpl.insert(0,otp)
 
-        url = f"http://127.0.0.1:8000/email-service/{email}/{otp}"
+        url = f"https://sms-backend-90tc.onrender.com/email-service/{email}/{otp}"
         response = requests.post(url)
         
         messagebox.showinfo('OTP send', 'OTP send!')
@@ -216,7 +214,7 @@ def new_password():
                 'username':username.get().strip(),
                 'password':None,
             }
-        url = "http://localhost:8000/login"  # Change to your actual host/port if different
+        url = "https://sms-backend-90tc.onrender.com/login"  # Change to your actual host/port if different
 
         # Send GET request
         response = requests.get(url, params=client_info_dict)
@@ -226,7 +224,7 @@ def new_password():
         if validation == "password":
             contentframe.pack_forget()
             pass_reset_frame.pack()
-            url =  f"http://127.0.0.1:8000/email/{username.get().strip()}"
+            url =  f"https://sms-backend-90tc.onrender.com/email/{username.get().strip()}"
             response = requests.get(url)
 
             email = response.json().get("value") 
@@ -255,7 +253,7 @@ def try_login ():
                 'username':username_value,
                 'password':password_value,
             }
-        url = "http://localhost:8000/login"  # Change to your actual host/port if different
+        url = "https://sms-backend-90tc.onrender.com/login"  # Change to your actual host/port if different
 
         # Send GET request
         response = requests.get(url, params=client_info_dict)
@@ -269,6 +267,9 @@ def try_login ():
                 username_label.config(text= username_value)
                 username_list.insert(0, username_value)
                 update_day_date_time()
+                update_daily_gui()
+                update_weekly_gui()
+                update_monthly_gui()
                 update_progress()
                 update_week_progress()
                 update_month_progress()
@@ -292,7 +293,7 @@ def reset_verify_otp():
 
 def reset_password():
     global client_info
-    url = "http://localhost:8000/resetpassword"  # Change to your actual host/port if different
+    url = "https://sms-backend-90tc.onrender.com/resetpassword"  # Change to your actual host/port if different
 
     # Query parameters
     params = {
@@ -365,7 +366,7 @@ def verify_otp():
             'phone':int(phone_signup.get().strip())
         }
         
-        url =  "http://127.0.0.1:8000/otp"
+        url =  "https://sms-backend-90tc.onrender.com/otp"
 
         params = {
             "username": username_signup.get().strip(),  # Optional
@@ -380,7 +381,7 @@ def verify_otp():
             messagebox.showerror('', 'username/phone/email already exist. Please Retry!')
         else:
             # update_server(client_info_dict)
-            url = "http://localhost:8000/signup" 
+            url = "https://sms-backend-90tc.onrender.com/signup" 
             response = requests.put(url, json=client_info_dict)
             confirm = response.json().get("value")
             if confirm == "Done":
@@ -592,13 +593,13 @@ def open_calendar1():
 def add_stock_to_dbs():
     global inventory, r_shop_name
 
-    url = f"http://127.0.0.1:8000/productInfo/{r_shop_name}/{barid.get()}"  
+    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{barid.get()}"  
     response = requests.get(url)
     find_product_id = response.json().get("value")
 
     # find_product_id = inventory.find_one(
     # {"Product_ID": barid.get()})
-    url = f"http://127.0.0.1:8000/productname/{r_shop_name}/{productname.get().lower()}"  
+    url = f"https://sms-backend-90tc.onrender.com/productname/{r_shop_name}/{productname.get().lower()}"  
     response = requests.get(url)
     find_product_name = response.json().get("value")
     
@@ -621,7 +622,7 @@ def add_stock():
             if eligibility == '0':
                 response = messagebox.askyesno("Confirm", "The Product with the given ID ot Name already exist. Do you want to update stock Quantity?")
                 if response:
-                    url = f"http://localhost:8000/productDetail/{r_shop_name}/{barid.get()}"
+                    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
                     response = requests.get(url)
                     check_quantity = response.json().get("value")
                     # check_quantity = inventory.find_one({'Product_ID':barid.get()}, {'Quantity':1})
@@ -635,7 +636,7 @@ def add_stock():
                                         'Expire_Date': expdate.get()
                                     }
 
-                                    url = "http://localhost:8000/update-product-group" 
+                                    url = "https://sms-backend-90tc.onrender.com/update-product-group" 
                                     payload = {
                                         "shopname": r_shop_name,
                                         "pid": barid.get(),
@@ -644,7 +645,7 @@ def add_stock():
                                     response = requests.put(url, json=payload)
                                     # inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
 
-                                    url = f"http://localhost:8000/productDetail/{r_shop_name}/{barid.get()}"
+                                    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
                                     response = requests.get(url)
                                     find_product_name_lc = response.json().get("value")["Product_Name"]
                                     find_product_cp_lc = response.json().get("value")["Cost_Price"]
@@ -709,7 +710,7 @@ def add_stock():
                     'Manufacture_Date': mfdate.get(),
                     'Expire_Date': expdate.get()
                 }
-                url = "http://localhost:8000/new-stock" 
+                url = "https://sms-backend-90tc.onrender.com/new-stock" 
                 payload = {
                     "shopname":r_shop_name,
                     "inserting":product_dict_to_add
@@ -750,7 +751,7 @@ def analytics_back():
 def find_item_in_update():
     global product_id_found, r_shop_name
     id_val = item_id_in_update.get()
-    url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{id_val}"
+    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{id_val}"
     response = requests.get(url)
     find_product = response.json().get("value")
 
@@ -774,7 +775,7 @@ def update_product():
     update_ID = product_id_found['UID']
     if should_update is True:
         try:
-            url = "http://localhost:8000/update-product" 
+            url = "https://sms-backend-90tc.onrender.com/update-product" 
             if len(newproductval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -841,7 +842,7 @@ def fetch_and_display_inventory():
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
     response = requests.get(url)
     data = response.json()
 
@@ -898,13 +899,13 @@ def analytics_idsrc_display():
     global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
-    url = f"http://127.0.0.1:8000/productInfo/{r_shop_name}/{analytics_src_val.get()}"
+    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{analytics_src_val.get()}"
     response = requests.get(url)
     find_product_id = response.json().get("value")
 
 
     if find_product_id:
-        url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{analytics_src_val.get()}"
+        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{analytics_src_val.get()}"
         response = requests.get(url)
         product_dict = response.json().get("value")
 
@@ -932,7 +933,7 @@ def fetch_and_display_analytics(selected_columns):
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
     response = requests.get(url)
     data = response.json()
     # data = list(inventory.find())
@@ -1030,7 +1031,7 @@ def export_inventory_to_excel(selected_columns):
         return
 
     # Fetch data from MongoDB
-    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
     response = requests.get(url)
     data = response.json()
     # data = list(inventory.find())
@@ -1132,7 +1133,7 @@ def get_cc_text():
         now = datetime.now()
         date_time_cc = now.strftime("%Y-%m-%d %H:%M:%S")
 
-        url =  f"http://127.0.0.1:8000/email/{username_list[0]}"
+        url =  f"https://sms-backend-90tc.onrender.com/email/{username_list[0]}"
         response = requests.get(url)
         email = response.json().get("value") 
 
@@ -1145,7 +1146,7 @@ def get_cc_text():
                 'Message': content_cc
             }
 
-            url = "http://127.0.0.1:8000/ccmessage"
+            url = "https://sms-backend-90tc.onrender.com/ccmessage"
             payload = {
                 "message":cc_message
             }
@@ -1158,7 +1159,7 @@ def get_cc_text():
         messagebox.showerror('Customer Care', "Can't send empty message!")
 def insert_in_alert_textbox(idee):
     global r_shop_name
-    url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{idee}"
+    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{idee}"
     response = requests.get(url)
     show_data = response.json().get("value")
 
@@ -1213,7 +1214,7 @@ def insert_data_to_alert_treeview():
     alert_tree_expire.tag_configure('expiring_soon', foreground='red')
     alert_tree_expire.tag_configure('expiring_late', foreground='green')
     
-    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
     response = requests.get(url)
     inventory_data = response.json()
     # inventory_data = inventory.find({})                   
@@ -1244,7 +1245,7 @@ def insert_data_to_alert_treeview():
         
 def insert_data_to_alert_treeview_stock():
     global r_shop_name
-    url = f"http://127.0.0.1:8000/getall/inventory/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
     response = requests.get(url)
     inventory_data = response.json()
 
@@ -1310,7 +1311,7 @@ def total_amount(pdct_price, pdct_qty, sgst, cgst, discount):
         return actual_amount - discount_value
 def check_product_quantity(pdct_qty, pdct_id):
     global r_shop_name
-    url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{pdct_id}"
+    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{pdct_id}"
     response = requests.get(url)
     find_quantity = response.json().get("value")
 
@@ -1325,13 +1326,13 @@ billing_slno = 1
 product_ids = []
 def billing_tree_insert(value):
     global billing_slno, product_ids, r_shop_name
-    url = f"http://127.0.0.1:8000/productInfo/{r_shop_name}/{barcodevalue.get()}"
+    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{barcodevalue.get()}"
     response = requests.get(url)
     inv_data = response.json().get("value")
     # inv_data = inventory.find_one({'Product_ID':barcodevalue.get()})
     
     if inv_data:
-        url = f"http://127.0.0.1:8000/productDetail/{r_shop_name}/{barcodevalue.get()}"
+        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barcodevalue.get()}"
         response = requests.get(url)
         product_dict_bill = response.json().get("value")
 
@@ -1446,7 +1447,7 @@ def gen_bill_win():
         messagebox.showinfo("Bill Saved", "Bill Saved Successfully.")
         
         for pdid, itemm in data_dict.items():
-            url = "http://localhost:8000/stocks"  
+            url = "https://sms-backend-90tc.onrender.com/stocks"  
 
             params = {
                 "pdid": str(pdid),
@@ -1597,7 +1598,7 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
     global username_list, current_dir_his, r_shop_name
     
     try:
-        url =  f"http://127.0.0.1:8000/email/{username_list[0]}"
+        url =  f"https://sms-backend-90tc.onrender.com/email/{username_list[0]}"
         response = requests.get(url)
 
         email = response.json().get("value") 
@@ -1625,7 +1626,7 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
         "action" : action1s
     }
 
-    url = "http://127.0.0.1:8000/add-global-data"
+    url = "https://sms-backend-90tc.onrender.com/add-global-data"
     payload = {
         "shopname":r_shop_name,
         "inserting":glob_history_dict
@@ -1676,7 +1677,7 @@ def show_global_history_data():
     for item in glo_history_tree.get_children():
         glo_history_tree.delete(item)
     
-    url = f"http://127.0.0.1:8000/global-history/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
     response = requests.get(url)
     glob_history_data = response.json()
 
@@ -1748,7 +1749,7 @@ sum_amount_month = 0
 
 def update_earnings():
     global sum_amount_day, sum_amount_month, sum_amount_week, r_shop_name
-    url = f"http://127.0.0.1:8000/global-history/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
     response = requests.get(url)
     globalhistory_data = response.json()
     # globalhistory_data = list(global_history.find())
@@ -1801,7 +1802,7 @@ def update_earnings():
         "Weekly_Income":sum_amount_week,
         "Monthly_Income":sum_amount_month
     }
-    url = "http://127.0.0.1:8000/updated-earnings"
+    url = "https://sms-backend-90tc.onrender.com/updated-earnings"
     payload = {
         "shopname": r_shop_name,
         "inserting": update_dict
@@ -2698,7 +2699,7 @@ if check_internet():
 
     r_shop_name = shop_name[1:]
 
-    url = f"http://127.0.0.1:8000/activated/{r_shop_name}"
+    url = f"https://sms-backend-90tc.onrender.com/activated/{r_shop_name}"
     response = requests.get(url)
     
     
@@ -2723,7 +2724,7 @@ if check_internet():
         }
 
         # Insert the data
-        url = f"http://127.0.0.1:8000/add-new-earning"
+        url = f"https://sms-backend-90tc.onrender.com/add-new-earning"
         payload = {
             "shopname":r_shop_name,
             "inserting":data_ern
@@ -2867,6 +2868,10 @@ if check_internet():
     
     username_label = Label(dashboard_display, text='', font=('Poppins', 20), fg="black", bg = 'white')
     username_label.place(x = 100, y = 25)
+
+    refresh_button = ctk.CTkButton(dashboard_display, text="Refresh", font=("poppins", 16), bg_color="white", corner_radius=10, height=20,
+                                   cursor = "hand2", command=refreshEarnings)
+    refresh_button.place(x = 350, y = 130)
     
     day_label = Label(dashboard_display, text='Tuesday', font = ('Poppins', 15), fg="#6F6F6F", bg='white')
     day_label.place(x = 1000, y = 10 )
@@ -3580,6 +3585,7 @@ if check_internet():
                                    fg_color='#4B54F8', bg_color='white', text_color='white', corner_radius=20,
                                    hover_color='black')
     cc_send_button.place(x = 775, y = 450)
+
 
     win.mainloop()
     
