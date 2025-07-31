@@ -88,7 +88,7 @@ def update_progress():
         daily_income_profit.configure(text=daily_ern.get("Daily_Income", "N/A"))
 
     except Exception as e:
-        print(f"Error in update_progress: {e}")
+        print(f"Error in update_progress: ")
 
 
 def update_daily_gui():
@@ -132,7 +132,7 @@ def update_week_progress():
         weekly_ern = response.json().get("value")
         weekly_income_profit.configure(text=weekly_ern.get("Weekly_Income", "N/A"))
     except Exception as e:
-        print(f"Error in update_week_progress: {e}")
+        print(f"Error in update_week_progress:")
       
 
 def update_weekly_gui():
@@ -178,7 +178,7 @@ def update_month_progress():
         monthly_income_profit.configure(text=monthly_ern.get("Monthly_Income", "N/A"))
         
     except Exception as e:
-        print(f"Error in update_month_progress: {e}")
+        print(f"Error in update_month_progress:")
 
     
 def update_monthly_gui():
@@ -197,11 +197,13 @@ def send_otp(email):
     if check_internet():
         otp = generate_otp()
         otpl.insert(0,otp)
-
-        url = f"https://sms-backend-90tc.onrender.com/email-service/{email}/{otp}"
-        response = requests.post(url)
+        try:
+            url = f"https://sms-backend-90tc.onrender.com/email-service/{email}/{otp}"
+            response = requests.post(url)
         
-        messagebox.showinfo('OTP send', 'OTP send!')
+            messagebox.showinfo('OTP send', 'OTP send!')
+        except Exception as e:
+            messagebox.showerror("Message Unsent", "Unable to send message!")
     else:
         messagebox.showerror('Connection Error', 'Please Check your internet connection!')
 
@@ -214,12 +216,16 @@ def new_password():
                 'username':username.get().strip(),
                 'password':None,
             }
-        url = "https://sms-backend-90tc.onrender.com/login"  # Change to your actual host/port if different
+        try:
+            url = "https://sms-backend-90tc.onrender.com/login"  # Change to your actual host/port if different
 
-        # Send GET request
-        response = requests.get(url, params=client_info_dict)
+            # Send GET request
+            response = requests.get(url, params=client_info_dict)
 
-        validation = response.json().get("value")
+            validation = response.json().get("value")
+        except (requests.exceptions.RequestException, requests.exceptions.ConnectionError) as e:
+            print("New_pass Error")
+            validation = []
 
         if validation == "password":
             contentframe.pack_forget()
@@ -607,7 +613,116 @@ def add_stock_to_dbs():
         return "0"
     else:
         return "1"
-        
+
+def create_inventory():
+    folder_name = "database_folder"
+    db_filename = "inventory.db"
+    db_path = os.path.join(folder_name, db_filename)
+
+    # Create folder if it doesn't exist
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+
+    # Connect to the database (it will create the file if it doesn't exist)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Create inventory table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS inventory (
+        Product_ID TEXT,
+        Product_Name TEXT,
+        Quantity INTEGER,
+        Cost_Price REAL,
+        Selling_Price REAL,
+        Tax REAL,
+        Discount REAL,
+        Manufacture_Date TEXT,
+        Expire_Date TEXT
+    )
+    ''')
+    conn.commit()
+    conn.close()
+    return db_path
+
+def add_to_inventory(record:dict):
+    db_path = create_inventory()
+    if record:
+        required_keys = [
+            "Product_ID", "Product_Name", "Quantity", "Cost_Price", "Selling_Price",
+            "Tax", "Discount", "Manufacture_Date", "Expire_Date"
+        ]
+        missing_keys = [key for key in required_keys if key not in record]
+        if missing_keys:
+            raise ValueError(f"Missing keys in record: {missing_keys}")
+
+        # Connect to database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Insert record
+        cursor.execute('''
+            INSERT INTO inventory (
+                Product_ID, Product_Name, Quantity, Cost_Price, Selling_Price,
+                Tax, Discount, Manufacture_Date, Expire_Date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            record["Product_ID"],
+            record["Product_Name"],
+            record["Quantity"],
+            record["Cost_Price"],
+            record["Selling_Price"],
+            record["Tax"],
+            record["Discount"],
+            record["Manufacture_Date"],
+            record["Expire_Date"]
+        ))
+        print("Record inserted successfully.")
+    else:
+        print("Empty record")
+
+    conn.commit()
+    conn.close()        
+
+def update_inventory_record(dict_to_update: dict):
+    DB_FOLDER = "database_folder"
+    DB_FILE = "inventory.db"
+    DB_PATH = os.path.join(DB_FOLDER, DB_FILE)
+
+    pid = dict_to_update.get("pid")
+    new_val = dict_to_update.get("new_val")
+
+    if not pid or not new_val:
+        raise ValueError("Both 'pid' and 'new_val' must be provided.")
+
+    # Only allow valid columns
+    allowed_columns = {
+        "Product_Name", "Quantity", "Cost_Price", "Selling_Price",
+        "Tax", "Discount", "Manufacture_Date", "Expire_Date"
+    }
+
+    update_fields = {k: v for k, v in new_val.items() if k in allowed_columns}
+    if not update_fields:
+        raise ValueError("No valid fields to update.")
+
+    # Construct SQL dynamically
+    set_clause = ", ".join(f"{key} = ?" for key in update_fields)
+    values = list(update_fields.values()) + [pid]
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute(f'''
+        UPDATE inventory
+        SET {set_clause}
+        WHERE Product_ID = ?
+    ''', values)
+
+    conn.commit()
+    conn.close()
+    
+    print(f"Product_ID {pid} updated successfully.")
 
 def add_stock():
     global inventory, r_shop_name
@@ -644,6 +759,8 @@ def add_stock():
                                     }
                                     response = requests.put(url, json=payload)
                                     # inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
+
+                                    update_inventory_record({"pid":barid.get(), "new_val":product_dict_to_update})
 
                                     url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
                                     response = requests.get(url)
@@ -717,6 +834,7 @@ def add_stock():
                 }
                 response = requests.post(url, json=payload)
 
+                add_to_inventory(product_dict_to_add)
                 localhistory_update(product_id1 = barid.get(), product_name1 = productname.get().lower(), amount1 = float(cp.get())*float(productqty.get()), action1 = int(productqty.get()))
                 globalhistory_update(product_id1s = barid.get(), product_name1s = productname.get().lower() ,amount1s = float(cp.get())*float(productqty.get()) , action1s = int(productqty.get()))
 
@@ -751,10 +869,13 @@ def analytics_back():
 def find_item_in_update():
     global product_id_found, r_shop_name
     id_val = item_id_in_update.get()
-    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{id_val}"
-    response = requests.get(url)
-    find_product = response.json().get("value")
-
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{id_val}"
+        response = requests.get(url)
+        find_product = response.json().get("value")
+    except requests.exceptions.ConnectionError as e:
+        print("Search error in find item in update")
+        find_product = []
     try:
         if find_product:
             find_result_label.configure( text = f"Item Found:{find_product['Product_Name']}", fg ='White', bg ='#4B54F8', width=(len(find_product)+10) )
@@ -1160,8 +1281,24 @@ def get_cc_text():
 def insert_in_alert_textbox(idee):
     global r_shop_name
     url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{idee}"
-    response = requests.get(url)
-    show_data = response.json().get("value")
+    try:
+        response = requests.get(url)
+        show_data = response.json().get("value")
+        data_insert_alert_txtbx = f'''
+    Product_ID:       {idee},
+    Product_Name:     {show_data['Product_Name']},
+    Quantity:         {show_data['Quantity']},  
+    Cost_Price:       {show_data['Cost_Price']},
+    Selling_Price:    {show_data['Selling_Price']},
+    Manufacture_Date: {show_data['Manufacture_Date']},
+    Expire_Date:      {show_data['Expire_Date']},
+    Tax:              {show_data['Tax']},
+    Discount:         {show_data['Discount']}
+                
+                '''
+    except (requests.exceptions.ConnectionError) as e:
+        print("Please Try again!")
+        data_insert_alert_txtbx = "Please Click again!"
 
     # show_data = inventory.find_one(
     #     {'Product_ID':idee},
@@ -1174,18 +1311,7 @@ def insert_in_alert_textbox(idee):
     #     "Tax": 1,
     #     "Discount": 1}
     # )
-    data_insert_alert_txtbx = f'''
-Product_ID:       {idee},
-Product_Name:     {show_data['Product_Name']},
-Quantity:         {show_data['Quantity']},  
-Cost_Price:       {show_data['Cost_Price']},
-Selling_Price:    {show_data['Selling_Price']},
-Manufacture_Date: {show_data['Manufacture_Date']},
-Expire_Date:      {show_data['Expire_Date']},
-Tax:              {show_data['Tax']},
-Discount:         {show_data['Discount']}
-            
-            '''
+
     alert_textbox.insert("0.0", data_insert_alert_txtbx)
             
 def on_row_selected_expire(value):
@@ -1309,11 +1435,11 @@ def total_amount(pdct_price, pdct_qty, sgst, cgst, discount):
         discount_value = (((pdct_price*pdct_qty)+sgst+cgst))*discount/100
         actual_amount = ((pdct_price*pdct_qty)+sgst+cgst)
         return actual_amount - discount_value
+    
 def check_product_quantity(pdct_qty, pdct_id):
     global r_shop_name
-    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{pdct_id}"
-    response = requests.get(url)
-    find_quantity = response.json().get("value")
+ 
+    find_quantity = get_product_by_id(pdct_id)
 
     # find_quantity = inventory.find_one({"Product_ID":pdct_id},{"Quantity":1})
 
@@ -1321,20 +1447,35 @@ def check_product_quantity(pdct_qty, pdct_id):
         return True
     else:
         return False
-           
+
+def get_product_by_id(product_id: str) -> dict:
+    DB_PATH = create_inventory()
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row  # Enable dict-like row access
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT * FROM inventory WHERE Product_ID = ?
+    ''', (product_id,))
+    
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return dict(row)
+    else:
+        return {}
+
 billing_slno = 1
 product_ids = []
 def billing_tree_insert(value):
     global billing_slno, product_ids, r_shop_name
-    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{barcodevalue.get()}"
-    response = requests.get(url)
-    inv_data = response.json().get("value")
+    
+    product_dict_bill = get_product_by_id(barcodevalue.get())
     # inv_data = inventory.find_one({'Product_ID':barcodevalue.get()})
     
-    if inv_data:
-        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barcodevalue.get()}"
-        response = requests.get(url)
-        product_dict_bill = response.json().get("value")
+    if product_dict_bill:
 
         # product_dict_bill = inventory.find_one(
         #     {'Product_ID':barcodevalue.get()},
@@ -1414,7 +1555,38 @@ def on_checkbox1_click():
     if a4_var.get():
         a4_var.set(0)
 
+def decrease_product_quantity(product_id: str, amount: int) -> bool:
+    DB_PATH = create_inventory()
 
+    if amount <= 0:
+        raise ValueError("Amount to decrease must be greater than zero.")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Check current quantity
+    cursor.execute("SELECT Quantity FROM inventory WHERE Product_ID = ?", (product_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return False  
+
+    current_quantity = row[0]
+    if current_quantity < amount:
+        conn.close()
+        return False 
+
+    new_quantity = current_quantity - amount
+    cursor.execute('''
+        UPDATE inventory
+        SET Quantity = ?
+        WHERE Product_ID = ?
+    ''', (new_quantity, product_id))
+
+    conn.commit()
+    conn.close()
+    return True
 
 def gen_bill_win():
     data_dict = {}
@@ -1458,6 +1630,7 @@ def gen_bill_win():
             # Make the PUT request
             response = requests.put(url, params=params)
             result_found = response.json().get("value")
+            val = decrease_product_quantity(str(pdid), amount=int(itemm["Quantity"]))
             # result_found = inventory.update_one(
             #     {"Product_ID": str(pdid)},
             #     {"$inc": {"Quantity": -int(itemm["Quantity"])}}
