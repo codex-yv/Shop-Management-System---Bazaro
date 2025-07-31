@@ -32,7 +32,7 @@ from reportlab.lib.units import mm
 import webbrowser
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-
+import requests
 
 error = 0
 otpl =[]
@@ -79,19 +79,25 @@ def get_percentage_of_day():
     return (seconds_passed / total_seconds_in_day) * 100
 
 def update_progress():
-    
-    percentage = get_percentage_of_day()
-
     update_earnings()
+    var = "Daily_Income"
+    url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
+    try:
+        response = requests.get(url)
+        daily_ern = response.json().get("value")
+        daily_income_profit.configure(text=daily_ern.get("Daily_Income", "N/A"))
 
-    daily_ern = earnings.find_one({"Earning_ID":101}, {"Daily_Income":1})
-    
-    daily_income_profit.configure(text = daily_ern["Daily_Income"])
+    except Exception as e:
+        print(f"Error in update_progress: ")
 
-    # progress_var.set(percentage)
-    daily_progress.set(get_percentage_of_day() / 100) 
+
+def update_daily_gui():
+    percentage = get_percentage_of_day()
+        
+    daily_progress.set(percentage / 100)
     daily_progress_label.configure(text=f"{percentage:.2f}% day completed")
-    win.after(3000, update_progress)
+    win.after(1000, update_daily_gui)
+
 
 def generate_otp():
     return random.randint(100000, 999999)
@@ -119,16 +125,22 @@ def get_fraction_of_week():
     return (day_count/7)*100
 
 def update_week_progress():
-    
-    day_frac = get_fraction_of_week()    
-    
-    weekly_ern = earnings.find_one({"Earning_ID":101}, {"Weekly_Income":1})
-    
-    weekly_income_profit.configure(text = weekly_ern["Weekly_Income"])
-    
-    weekly_progress.set(day_frac/100)
-    
-    win.after(3000, update_week_progress)
+    var = "Weekly_Income"
+    url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
+    try:
+        response = requests.get(url)
+        weekly_ern = response.json().get("value")
+        weekly_income_profit.configure(text=weekly_ern.get("Weekly_Income", "N/A"))
+    except Exception as e:
+        print(f"Error in update_week_progress:")
+      
+
+def update_weekly_gui():
+    day_frac = get_fraction_of_week()
+    weekly_progress.set(day_frac / 100)
+    win.after(2000, update_weekly_gui)
+
+
 
 month_days = {
     1: 31,   # January
@@ -158,72 +170,71 @@ def get_monthly_percent():
 
 def update_month_progress():
     
-    month_frac = get_monthly_percent()
-    
-    monthly_ern = earnings.find_one({"Earning_ID":101}, {"Monthly_Income":1})
-    
-    monthly_income_profit.configure(text = monthly_ern["Monthly_Income"])
-    
-    monthly_progress.set(month_frac/100)
+    var = "Monthly_Income"
+    url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
+    try:
+        response = requests.get(url)
+        monthly_ern = response.json().get("value")
+        monthly_income_profit.configure(text=monthly_ern.get("Monthly_Income", "N/A"))
+        
+    except Exception as e:
+        print(f"Error in update_month_progress:")
 
-    win.after(3000, update_month_progress)
     
-def update_server(dictonary):
-    global client_info
-    
-    client_info.insert_one(dictonary)
-    messagebox.showinfo('Verification Done', 'Sign Up Successful!')    
-    
-    
-def check_server(chk_value, updt_value):
-    global client_info
-    
-    find_val = client_info.find({}, {'name':chk_value}, )
-    
+def update_monthly_gui():
+    month_frac = get_monthly_percent()
+
+    monthly_progress.set(month_frac / 100)
+    win.after(3000, lambda: update_monthly_gui)
+
+def refreshEarnings():
+    update_progress()
+    update_week_progress()
+    update_month_progress()
 
 def send_otp(email):
     global current_dir
     if check_internet():
         otp = generate_otp()
         otpl.insert(0,otp)
+        try:
+            url = f"https://sms-backend-90tc.onrender.com/email-service/{email}/{otp}"
+            response = requests.post(url)
         
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        
-        envars = current_dir/ ".env" # create .env file in current folder
-
-        load_dotenv(envars)
-
-        sender_email = os.getenv('EMAIL') #add your email in .env file
-        sender_key = os.getenv('KEY') # add gamil app passwords in .env file
-
-        server.login(sender_email, sender_key)
-        to_mail = email
-
-        msg = EmailMessage()
-
-        msg['Subject'] = 'OTP verification'
-        msg['From'] = 'ytgamings802212@gmail.com'
-        msg['to'] = to_mail
-
-        msg.set_content("Your OTP is " + str(otp))
-        server.send_message(msg)
-        messagebox.showinfo('OTP send', 'OTP send!')
+            messagebox.showinfo('OTP send', 'OTP send!')
+        except Exception as e:
+            messagebox.showerror("Message Unsent", "Unable to send message!")
     else:
         messagebox.showerror('Connection Error', 'Please Check your internet connection!')
 
 def new_password():
-    global client_info, new_email_list
+    global  new_email_list
     if len(username.get().strip())<4:
         messagebox.showerror('Reset Password', f"No username found with '{username.get()}'")
     else:
-        find_val_username = client_info.find_one(
-                {"username":username.get().strip() })
-        if find_val_username:
+        client_info_dict = {
+                'username':username.get().strip(),
+                'password':None,
+            }
+        try:
+            url = "https://sms-backend-90tc.onrender.com/login"  # Change to your actual host/port if different
+
+            # Send GET request
+            response = requests.get(url, params=client_info_dict)
+
+            validation = response.json().get("value")
+        except (requests.exceptions.RequestException, requests.exceptions.ConnectionError) as e:
+            print("New_pass Error")
+            validation = []
+
+        if validation == "password":
             contentframe.pack_forget()
             pass_reset_frame.pack()
-            find_email = client_info.find_one({'username':username.get().strip()}, {'email':1})
-            new_email = find_email['email']
+            url =  f"https://sms-backend-90tc.onrender.com/email/{username.get().strip()}"
+            response = requests.get(url)
+
+            email = response.json().get("value") 
+            new_email = email
             new_email_list.insert(0, new_email)
             
             threading.Thread(target=send_otp, args=(new_email,), daemon=True).start()
@@ -248,19 +259,23 @@ def try_login ():
                 'username':username_value,
                 'password':password_value,
             }
-            
-        find_val_username = client_info.find_one(
-                {"username": client_info_dict["username"]})
+        url = "https://sms-backend-90tc.onrender.com/login"  # Change to your actual host/port if different
+
+        # Send GET request
+        response = requests.get(url, params=client_info_dict)
+
+        validation = response.json().get("value")
         
-        if find_val_username:
-            find_val_password = client_info.find_one(
-                {"password": client_info_dict["password"]})
-            if find_val_password:
+        if validation != "username":
+            if validation != "password":
                 contentframe.pack_forget()
                 dashboard_frame.pack()
                 username_label.config(text= username_value)
                 username_list.insert(0, username_value)
                 update_day_date_time()
+                update_daily_gui()
+                update_weekly_gui()
+                update_monthly_gui()
                 update_progress()
                 update_week_progress()
                 update_month_progress()
@@ -284,10 +299,17 @@ def reset_verify_otp():
 
 def reset_password():
     global client_info
-    
-    new_pass_update = client_info.update_one({'username': username.get().strip()}, {"$set":{'password':resetpass.get()}})
+    url = "https://sms-backend-90tc.onrender.com/resetpassword"  # Change to your actual host/port if different
 
-    if new_pass_update.matched_count>0:
+    # Query parameters
+    params = {
+        "username":username.get().strip(),
+        "newpass":resetpass.get()
+    }
+    response = requests.put(url, params=params)
+    new_pass_update = response.json().get("value")
+
+    if new_pass_update is not None:
         messagebox.showinfo('Password Reset', f'Your new password is {resetpass.get()}')
         new_pass_frame.pack_forget()
         contentframe.pack()
@@ -339,7 +361,7 @@ def try_signup():
             
     
 def verify_otp():
-    global otpl, client_info
+    global otpl
     
     if email_otp.get() == str(otpl[0]):
         
@@ -350,20 +372,28 @@ def verify_otp():
             'phone':int(phone_signup.get().strip())
         }
         
-        find_val = client_info.find_one({
-            "$or": [
-                {"username": client_info_dict["username"]},
-                {"phone": client_info_dict["phone"]},
-                {"email": client_info_dict["email"]}
-            ]
-        })
-        
-        if find_val:
+        url =  "https://sms-backend-90tc.onrender.com/otp"
+
+        params = {
+            "username": username_signup.get().strip(),  # Optional
+            "phone": int(phone_signup.get().strip()),     # Optional
+            "email": email_signup.get().strip()  # Optional
+        }
+        response = requests.get(url, params=params)
+
+        find_val = response.json().get("value")
+
+        if find_val is False:
             messagebox.showerror('', 'username/phone/email already exist. Please Retry!')
         else:
-            update_server(client_info_dict)
-        
-        
+            # update_server(client_info_dict)
+            url = "https://sms-backend-90tc.onrender.com/signup" 
+            response = requests.put(url, json=client_info_dict)
+            confirm = response.json().get("value")
+            if confirm == "Done":
+                messagebox.showinfo('Verification Done', 'Sign Up Successful!')
+            else:
+                messagebox.showerror("Sign Up failed", "Please try again.")
     else:
         messagebox.showerror('Verification Error', 'incorrect OTP, please resend the otp and enter the correct one!')
 
@@ -567,23 +597,135 @@ def open_calendar1():
     ctk.CTkButton(top, text="Select", command=grab_date).pack(pady=5)
 
 def add_stock_to_dbs():
-    global inventory
-      
-    find_product_id = inventory.find_one(
-    {"Product_ID": barid.get()})
-    
-    find_product_name = inventory.find_one(
-        {"Product_Name": productname.get().lower()}
-    )
+    global inventory, r_shop_name
+
+    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{barid.get()}"  
+    response = requests.get(url)
+    find_product_id = response.json().get("value")
+
+    # find_product_id = inventory.find_one(
+    # {"Product_ID": barid.get()})
+    url = f"https://sms-backend-90tc.onrender.com/productname/{r_shop_name}/{productname.get().lower()}"  
+    response = requests.get(url)
+    find_product_name = response.json().get("value")
     
     if find_product_id or find_product_name:
         return "0"
     else:
         return "1"
-        
+
+def create_inventory():
+    folder_name = "database_folder"
+    db_filename = "inventory.db"
+    db_path = os.path.join(folder_name, db_filename)
+
+    # Create folder if it doesn't exist
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+
+
+    # Connect to the database (it will create the file if it doesn't exist)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Create inventory table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS inventory (
+        Product_ID TEXT,
+        Product_Name TEXT,
+        Quantity INTEGER,
+        Cost_Price REAL,
+        Selling_Price REAL,
+        Tax REAL,
+        Discount REAL,
+        Manufacture_Date TEXT,
+        Expire_Date TEXT
+    )
+    ''')
+    conn.commit()
+    conn.close()
+    return db_path
+
+def add_to_inventory(record:dict):
+    db_path = create_inventory()
+    if record:
+        required_keys = [
+            "Product_ID", "Product_Name", "Quantity", "Cost_Price", "Selling_Price",
+            "Tax", "Discount", "Manufacture_Date", "Expire_Date"
+        ]
+        missing_keys = [key for key in required_keys if key not in record]
+        if missing_keys:
+            raise ValueError(f"Missing keys in record: {missing_keys}")
+
+        # Connect to database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Insert record
+        cursor.execute('''
+            INSERT INTO inventory (
+                Product_ID, Product_Name, Quantity, Cost_Price, Selling_Price,
+                Tax, Discount, Manufacture_Date, Expire_Date
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            record["Product_ID"],
+            record["Product_Name"],
+            record["Quantity"],
+            record["Cost_Price"],
+            record["Selling_Price"],
+            record["Tax"],
+            record["Discount"],
+            record["Manufacture_Date"],
+            record["Expire_Date"]
+        ))
+        print("Record inserted successfully.")
+    else:
+        print("Empty record")
+
+    conn.commit()
+    conn.close()        
+
+def update_inventory_record(dict_to_update: dict):
+    DB_FOLDER = "database_folder"
+    DB_FILE = "inventory.db"
+    DB_PATH = os.path.join(DB_FOLDER, DB_FILE)
+
+    pid = dict_to_update.get("pid")
+    new_val = dict_to_update.get("new_val")
+
+    if not pid or not new_val:
+        raise ValueError("Both 'pid' and 'new_val' must be provided.")
+
+    # Only allow valid columns
+    allowed_columns = {
+        "Product_Name", "Quantity", "Cost_Price", "Selling_Price",
+        "Tax", "Discount", "Manufacture_Date", "Expire_Date"
+    }
+
+    update_fields = {k: v for k, v in new_val.items() if k in allowed_columns}
+    if not update_fields:
+        raise ValueError("No valid fields to update.")
+
+    # Construct SQL dynamically
+    set_clause = ", ".join(f"{key} = ?" for key in update_fields)
+    values = list(update_fields.values()) + [pid]
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute(f'''
+        UPDATE inventory
+        SET {set_clause}
+        WHERE Product_ID = ?
+    ''', values)
+
+    conn.commit()
+    conn.close()
+    
+    print(f"Product_ID {pid} updated successfully.")
 
 def add_stock():
-    global inventory
+    global inventory, r_shop_name
     if len(barid.get())>0:
         eligibility = add_stock_to_dbs()
 
@@ -595,7 +737,10 @@ def add_stock():
             if eligibility == '0':
                 response = messagebox.askyesno("Confirm", "The Product with the given ID ot Name already exist. Do you want to update stock Quantity?")
                 if response:
-                    check_quantity = inventory.find_one({'Product_ID':barid.get()}, {'Quantity':1})
+                    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
+                    response = requests.get(url)
+                    check_quantity = response.json().get("value")
+                    # check_quantity = inventory.find_one({'Product_ID':barid.get()}, {'Quantity':1})
                     if check_quantity:
                         if check_quantity['Quantity'] == 0:
                             try:
@@ -605,13 +750,22 @@ def add_stock():
                                         'Manufacture_Date': mfdate.get(),
                                         'Expire_Date': expdate.get()
                                     }
-                                    
-                                    inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
-                                    
-                                    find_product_name_lc = inventory.find_one(
-                                        {"Product_ID": barid.get()}, {"Product_Name":1})
-                                    find_product_cp_lc = inventory.find_one(
-                                        {"Product_ID": barid.get()}, {"Cost_Price":1})
+
+                                    url = "https://sms-backend-90tc.onrender.com/update-product-group" 
+                                    payload = {
+                                        "shopname": r_shop_name,
+                                        "pid": barid.get(),
+                                        "new_val":product_dict_to_update # or "element_val" if that's the correct field name
+                                    }
+                                    response = requests.put(url, json=payload)
+                                    # inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
+
+                                    update_inventory_record({"pid":barid.get(), "new_val":product_dict_to_update})
+
+                                    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
+                                    response = requests.get(url)
+                                    find_product_name_lc = response.json().get("value")["Product_Name"]
+                                    find_product_cp_lc = response.json().get("value")["Cost_Price"]
                                     
                                     localhistory_update(product_id1 = barid.get(), product_name1 = find_product_name_lc, amount1 = find_product_cp_lc*float(productqty.get()), action1 = int(productqty.get()))
                                     globalhistory_update(product_id1s = barid.get(), product_name1s = find_product_name_lc ,amount1s = find_product_cp_lc*float(productqty.get()) , action1s = int(productqty.get()))
@@ -673,9 +827,14 @@ def add_stock():
                     'Manufacture_Date': mfdate.get(),
                     'Expire_Date': expdate.get()
                 }
-                # print(product_dict_to_add)
-                inventory.insert_one(product_dict_to_add)
-                
+                url = "https://sms-backend-90tc.onrender.com/new-stock" 
+                payload = {
+                    "shopname":r_shop_name,
+                    "inserting":product_dict_to_add
+                }
+                response = requests.post(url, json=payload)
+
+                add_to_inventory(product_dict_to_add)
                 localhistory_update(product_id1 = barid.get(), product_name1 = productname.get().lower(), amount1 = float(cp.get())*float(productqty.get()), action1 = int(productqty.get()))
                 globalhistory_update(product_id1s = barid.get(), product_name1s = productname.get().lower() ,amount1s = float(cp.get())*float(productqty.get()) , action1s = int(productqty.get()))
 
@@ -708,43 +867,81 @@ def analytics_back():
     inventory_display.pack(side='left')
     
 def find_item_in_update():
-    global product_id_found
+    global product_id_found, r_shop_name
     id_val = item_id_in_update.get()
-    find_product = inventory.find_one(
-        {"Product_ID": id_val}
-    )
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{id_val}"
+        response = requests.get(url)
+        find_product = response.json().get("value")
+    except requests.exceptions.ConnectionError as e:
+        print("Search error in find item in update")
+        find_product = []
     try:
         if find_product:
             find_result_label.configure( text = f"Item Found:{find_product['Product_Name']}", fg ='White', bg ='#4B54F8', width=(len(find_product)+10) )
             find_result_label.place(x = 585, y = 180) #(x = 585, y = 118)
             product_id_found['Update'] = True
-            product_id_found['UID'] = find_product['Product_ID']
+            product_id_found['UID'] = id_val
         else:
             find_result_label.configure( text = "Item Not Found!",fg ='White', bg ='red', width=15)
             find_result_label.place(x = 585, y = 180)
             product_id_found['Update'] = False
-            product_id_found['UID'] = find_product['Product_ID']
+            product_id_found['UID'] = id_val
     except TypeError:
         pass
 
 def update_product():
-    global product_id_found
+    global product_id_found, r_shop_name
     should_update = product_id_found['Update']
     update_ID = product_id_found['UID']
     if should_update is True:
         try:
+            url = "https://sms-backend-90tc.onrender.com/update-product" 
             if len(newproductval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Product_Name':newproductval.get().strip()}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Product_Name",
+                    "element_var": newproductval.get().strip()  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
             if len(newcpval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Cost_Price':float(newcpval.get())}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Cost_Price",
+                    "element_var": float(newcpval.get())  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
             if len(newspval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Selling_Price':float(newspval.get())}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Selling_Price",
+                    "element_var": float(newspval.get()) # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
             if len(newtaxval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Tax':float(newtaxval.get())}})
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Tax",
+                    "element_var": float(newtaxval.get())  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
             if len(newdiscountval.get()) != 0:
-                inventory.update_one({'Product_ID': update_ID}, {"$set":{'Discount':float(newdiscountval.get())}})
-            else:
-                messagebox.showinfo('Update', 'Updated!')
+                payload = {
+                    "shopname": r_shop_name,
+                    "pid": update_ID,
+                    "element": "Discount",
+                    "element_var": float(newdiscountval.get())  # or "element_val" if that's the correct field name
+                }
+                response = requests.put(url, json=payload)
+
+            messagebox.showinfo('Update', 'Updated!')
         except ValueError:
             messagebox.showerror('Invalid Input/s', 'Cost Price, Selling Price, Tax and Discount should not be any alphabet and should be greater than zero')
     else:
@@ -761,11 +958,15 @@ def delete_update_entries():
     find_result_label.place_forget()
 
 def fetch_and_display_inventory():
+    global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    data = list(inventory.find())
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    data = response.json()
+
     if not data:
         analytics_board.insert(END, "No data found in the database.")
         return
@@ -816,22 +1017,19 @@ def fetch_and_display_inventory():
     analytics_board.config(state=DISABLED)
     
 def analytics_idsrc_display():
+    global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
-    find_product_id = inventory.find_one(
-        {'Product_ID':analytics_src_val.get()}
-    )
+    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{analytics_src_val.get()}"
+    response = requests.get(url)
+    find_product_id = response.json().get("value")
+
+
     if find_product_id:
-        product_dict = inventory.find_one(
-            {'Product_ID':analytics_src_val.get()},
-            {"Product_Name": 1,
-             "Cost_Price": 1,
-             "Selling_Price": 1,
-             "Manufacture_Date": 1,
-             "Expire_Date": 1,
-             "Tax": 1,
-             "Discount": 1}
-        )
+        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{analytics_src_val.get()}"
+        response = requests.get(url)
+        product_dict = response.json().get("value")
+
         arranged_product = f'''
 #######---- Product Found ----#######
 
@@ -851,11 +1049,15 @@ Discount:         {product_dict['Discount']}
 # analytics_option = ['All', 'Cost, Selling Price', 'Product, Selling Price','Product, Cost Price', 'Product, Discount', 'Product, Tax', 'Product, Tax, Discount']
 
 def fetch_and_display_analytics(selected_columns):
+    global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    data = list(inventory.find())
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    data = response.json()
+    # data = list(inventory.find())
     if not data:
         analytics_board.insert(END, "No data found in the database.")
         return
@@ -938,7 +1140,7 @@ def option_selected(choice):
 
 
 def export_inventory_to_excel(selected_columns):
-
+    global r_shop_name
     file_path = filedialog.asksaveasfilename(
         defaultextension=".xlsx",
         filetypes=[("Excel files", "*.xlsx")],
@@ -950,7 +1152,10 @@ def export_inventory_to_excel(selected_columns):
         return
 
     # Fetch data from MongoDB
-    data = list(inventory.find())
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    data = response.json()
+    # data = list(inventory.find())
     if not data:
         print("No data found in the database.")
         return
@@ -1042,50 +1247,71 @@ def save_analytics_display():
         messagebox.showerror('IndexError', 'No parameter Found!')
 
 def get_cc_text():
-    global username_list
+    global username_list, r_shop_name
     print(username_list[0])
     content_cc = cc_textbox.get("0.0", "end")  # "0.0" = start, "end-1c" = end minus last newline
     if len(content)>0:
         now = datetime.now()
         date_time_cc = now.strftime("%Y-%m-%d %H:%M:%S")
-        email = client_info.find_one({'username':username_list[0]}, {'email':1})
-        if email:
-            Email = email['email']
+
+        url =  f"https://sms-backend-90tc.onrender.com/email/{username_list[0]}"
+        response = requests.get(url)
+        email = response.json().get("value") 
+
+
+        if email != "404":
             cc_message = {
-                'Email':Email,
+                'Shop':r_shop_name,
+                'Email':email,
                 'Time': date_time_cc,
                 'Message': content_cc
             }
-            cc_database.insert_one(cc_message)
-            messagebox.showinfo('Customer Care', f'Message sent successfully.The reply will sent to your email {Email}')
+
+            url = "https://sms-backend-90tc.onrender.com/ccmessage"
+            payload = {
+                "message":cc_message
+            }
+            response = requests.post(url, json=payload)
+
+            messagebox.showinfo('Customer Care', f'Message sent successfully.The reply will sent to your email {email}')
         else:
             messagebox.showerror('Customer Care', "Can't send the message! Please login again.")
     else:
         messagebox.showerror('Customer Care', "Can't send empty message!")
 def insert_in_alert_textbox(idee):
-    show_data = inventory.find_one(
-        {'Product_ID':idee},
-        {"Product_Name": 1,
-         "Quantity":1,
-        "Cost_Price": 1,
-        "Selling_Price": 1,
-        "Manufacture_Date": 1,
-        "Expire_Date": 1,
-        "Tax": 1,
-        "Discount": 1}
-    )
-    data_insert_alert_txtbx = f'''
-Product_ID:       {idee},
-Product_Name:     {show_data['Product_Name']},
-Quantity:         {show_data['Quantity']},  
-Cost_Price:       {show_data['Cost_Price']},
-Selling_Price:    {show_data['Selling_Price']},
-Manufacture_Date: {show_data['Manufacture_Date']},
-Expire_Date:      {show_data['Expire_Date']},
-Tax:              {show_data['Tax']},
-Discount:         {show_data['Discount']}
-            
-            '''
+    global r_shop_name
+    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{idee}"
+    try:
+        response = requests.get(url)
+        show_data = response.json().get("value")
+        data_insert_alert_txtbx = f'''
+    Product_ID:       {idee},
+    Product_Name:     {show_data['Product_Name']},
+    Quantity:         {show_data['Quantity']},  
+    Cost_Price:       {show_data['Cost_Price']},
+    Selling_Price:    {show_data['Selling_Price']},
+    Manufacture_Date: {show_data['Manufacture_Date']},
+    Expire_Date:      {show_data['Expire_Date']},
+    Tax:              {show_data['Tax']},
+    Discount:         {show_data['Discount']}
+                
+                '''
+    except (requests.exceptions.ConnectionError) as e:
+        print("Please Try again!")
+        data_insert_alert_txtbx = "Please Click again!"
+
+    # show_data = inventory.find_one(
+    #     {'Product_ID':idee},
+    #     {"Product_Name": 1,
+    #      "Quantity":1,
+    #     "Cost_Price": 1,
+    #     "Selling_Price": 1, 
+    #     "Manufacture_Date": 1,
+    #     "Expire_Date": 1,
+    #     "Tax": 1,
+    #     "Discount": 1}
+    # )
+
     alert_textbox.insert("0.0", data_insert_alert_txtbx)
             
 def on_row_selected_expire(value):
@@ -1107,13 +1333,17 @@ def on_row_selected_stock(value):
             insert_in_alert_textbox(product_id)
 
 def insert_data_to_alert_treeview():
-    
+    global r_shop_name
     for items in alert_tree_expire.get_children():
         alert_tree_expire.delete(items)
         
     alert_tree_expire.tag_configure('expiring_soon', foreground='red')
     alert_tree_expire.tag_configure('expiring_late', foreground='green')
-    inventory_data = inventory.find({})
+    
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    inventory_data = response.json()
+    # inventory_data = inventory.find({})                   
     count = 1
     
     date_format = "%d/%m/%Y"
@@ -1140,7 +1370,12 @@ def insert_data_to_alert_treeview():
         
         
 def insert_data_to_alert_treeview_stock():
-    inventory_data = inventory.find({})
+    global r_shop_name
+    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+    response = requests.get(url)
+    inventory_data = response.json()
+
+    # inventory_data = inventory.find({})
     for items in alert_tree_stock.get_children():
         alert_tree_stock.delete(items)
     
@@ -1200,28 +1435,55 @@ def total_amount(pdct_price, pdct_qty, sgst, cgst, discount):
         discount_value = (((pdct_price*pdct_qty)+sgst+cgst))*discount/100
         actual_amount = ((pdct_price*pdct_qty)+sgst+cgst)
         return actual_amount - discount_value
+    
 def check_product_quantity(pdct_qty, pdct_id):
-    find_quantity = inventory.find_one({"Product_ID":pdct_id},{"Quantity":1})
+    global r_shop_name
+ 
+    find_quantity = get_product_by_id(pdct_id)
+
+    # find_quantity = inventory.find_one({"Product_ID":pdct_id},{"Quantity":1})
+
     if find_quantity["Quantity"] >= pdct_qty+1:
         return True
     else:
         return False
-           
+
+def get_product_by_id(product_id: str) -> dict:
+    DB_PATH = create_inventory()
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row  # Enable dict-like row access
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT * FROM inventory WHERE Product_ID = ?
+    ''', (product_id,))
+    
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return dict(row)
+    else:
+        return {}
+
 billing_slno = 1
 product_ids = []
 def billing_tree_insert(value):
-    global billing_slno, product_ids
-
-    inv_data = inventory.find_one({'Product_ID':barcodevalue.get()})
+    global billing_slno, product_ids, r_shop_name
     
-    if inv_data:
-        product_dict_bill = inventory.find_one(
-            {'Product_ID':barcodevalue.get()},
-            {"Product_Name": 1,
-            "Selling_Price": 1,
-            "Tax": 1,
-            "Discount": 1}
-        )
+    product_dict_bill = get_product_by_id(barcodevalue.get())
+    # inv_data = inventory.find_one({'Product_ID':barcodevalue.get()})
+    
+    if product_dict_bill:
+
+        # product_dict_bill = inventory.find_one(
+        #     {'Product_ID':barcodevalue.get()},
+        #     {"Product_Name": 1,
+        #     "Selling_Price": 1,
+        #     "Tax": 1,
+        #     "Discount": 1}
+        # )
 
         for item0 in billing_tree.get_children():
             values0 = billing_tree.item(item0)["values"]
@@ -1293,14 +1555,45 @@ def on_checkbox1_click():
     if a4_var.get():
         a4_var.set(0)
 
+def decrease_product_quantity(product_id: str, amount: int) -> bool:
+    DB_PATH = create_inventory()
 
+    if amount <= 0:
+        raise ValueError("Amount to decrease must be greater than zero.")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # Check current quantity
+    cursor.execute("SELECT Quantity FROM inventory WHERE Product_ID = ?", (product_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return False  
+
+    current_quantity = row[0]
+    if current_quantity < amount:
+        conn.close()
+        return False 
+
+    new_quantity = current_quantity - amount
+    cursor.execute('''
+        UPDATE inventory
+        SET Quantity = ?
+        WHERE Product_ID = ?
+    ''', (new_quantity, product_id))
+
+    conn.commit()
+    conn.close()
+    return True
 
 def gen_bill_win():
     data_dict = {}
     global payment_method
     
     def save_and_print():
-        global payment_method
+        global payment_method, r_shop_name
         filename = f"Bill_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         full_path = os.path.join(save_path, filename)
 
@@ -1326,11 +1619,23 @@ def gen_bill_win():
         messagebox.showinfo("Bill Saved", "Bill Saved Successfully.")
         
         for pdid, itemm in data_dict.items():
-            result_found = inventory.update_one(
-                {"Product_ID": str(pdid)},
-                {"$inc": {"Quantity": -int(itemm["Quantity"])}}
-            )
-            if result_found.matched_count <= 0:
+            url = "https://sms-backend-90tc.onrender.com/stocks"  
+
+            params = {
+                "pdid": str(pdid),
+                "quantity": int(itemm["Quantity"]),
+                "shopname": r_shop_name
+            }
+
+            # Make the PUT request
+            response = requests.put(url, params=params)
+            result_found = response.json().get("value")
+            val = decrease_product_quantity(str(pdid), amount=int(itemm["Quantity"]))
+            # result_found = inventory.update_one(
+            #     {"Product_ID": str(pdid)},
+            #     {"$inc": {"Quantity": -int(itemm["Quantity"])}}
+            # )
+            if result_found <= 0:
                 print("Can't update the db")
         
             localhistory_update(product_id1 = pdid, product_name1 = itemm["Product Name"],amount1 = itemm["Amount"], action1 = -int(itemm["Quantity"]))
@@ -1463,12 +1768,15 @@ def localhistory_update(product_id1, product_name1,amount1, action1):
 
     
 def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
-    global username_list, current_dir_his
+    global username_list, current_dir_his, r_shop_name
     
     try:
-        email = client_info.find_one({'username':username_list[0]}, {'email':1})
+        url =  f"https://sms-backend-90tc.onrender.com/email/{username_list[0]}"
+        response = requests.get(url)
+
+        email = response.json().get("value") 
         
-        if not email:
+        if  email == "404":
             email = "None"
     except IndexError:
         email = "None"
@@ -1491,7 +1799,15 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
         "action" : action1s
     }
 
-    global_history.insert_one(glob_history_dict)
+    url = "https://sms-backend-90tc.onrender.com/add-global-data"
+    payload = {
+        "shopname":r_shop_name,
+        "inserting":glob_history_dict
+    }
+
+    response = requests.post(url, json=payload)
+
+    # global_history.insert_one(glob_history_dict)
 
         
 def show_local_history_data():
@@ -1530,10 +1846,15 @@ def show_local_history_data():
             history_tree.insert("", END, values = history_data_format, tags=("buy",))
 
 def show_global_history_data():
+    global r_shop_name
     for item in glo_history_tree.get_children():
         glo_history_tree.delete(item)
-        
-    glob_history_data = global_history.find()
+    
+    url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
+    response = requests.get(url)
+    glob_history_data = response.json()
+
+    # glob_history_data = global_history.find()
 
     glo_history_tree.tag_configure('sell', foreground="#f92d2d")  
     glo_history_tree.tag_configure('buy', foreground="#229954")
@@ -1600,8 +1921,11 @@ sum_amount_week = 0
 sum_amount_month = 0
 
 def update_earnings():
-    global sum_amount_day, sum_amount_month, sum_amount_week
-    globalhistory_data = list(global_history.find())
+    global sum_amount_day, sum_amount_month, sum_amount_week, r_shop_name
+    url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
+    response = requests.get(url)
+    globalhistory_data = response.json()
+    # globalhistory_data = list(global_history.find())
     if globalhistory_data:
         now = datetime.now()
 
@@ -1646,14 +1970,25 @@ def update_earnings():
     upsert_income(tdate2, sum_amount_day)
     upsert_income_weekly(wn_name, month, sum_amount_week)
 
-    update_earning = earnings.update_one({"Earning_ID":101},
-                                         {
-                                             "$set":{
-                                                 "Daily_Income":sum_amount_day,
-                                                 "Weekly_Income":sum_amount_week,
-                                                 "Monthly_Income":sum_amount_month
-                                             }
-                                         })
+    update_dict = {
+        "Daily_Income":sum_amount_day,
+        "Weekly_Income":sum_amount_week,
+        "Monthly_Income":sum_amount_month
+    }
+    url = "https://sms-backend-90tc.onrender.com/updated-earnings"
+    payload = {
+        "shopname": r_shop_name,
+        "inserting": update_dict
+    }
+    response = requests.put(url, json=payload)
+    # update_earning = earnings.update_one({"Earning_ID":101},
+    #                                      {
+    #                                          "$set":{
+    #                                              "Daily_Income":sum_amount_day,
+    #                                              "Weekly_Income":sum_amount_week,
+    #                                              "Monthly_Income":sum_amount_month
+    #                                          }
+    #                                      })
     sum_amount_day = 0  
     sum_amount_week = 0
     sum_amount_month = 0
@@ -2313,14 +2648,8 @@ def update_monthly_income(month, year, earning):
 
 if check_internet():
     current_dir = Path(__file__).resolve().parent if "__file__" in locals() else Path.cwd()
-    envars_db = current_dir/ ".env" # create .env file in current folder
+    
 
-    load_dotenv(envars_db)
-
-    client = pymongo.MongoClient(os.getenv('URL_Mongo'))
-
-    login_signup_database = client['Login-Signup']
-    client_info = login_signup_database.clien_infos
     win=Tk()
     win.geometry("1400x770+50+0")
     win.title("Bazaro")
@@ -2505,10 +2834,10 @@ if check_internet():
 
     phone_otp = StringVar()
 
-    email_otp_entry = ctk.CTkEntry(verification_frame, height=40,width=330, fg_color='#f2f3f4', text_color='black',
+    phone_otp_entry = ctk.CTkEntry(verification_frame, height=40,width=330, fg_color='#f2f3f4', text_color='black',
                                 border_color='#FF8A00', bg_color='white', corner_radius=20, font=('Poppins', 22),
                                 textvariable= phone_otp)
-    email_otp_entry.place(x = 910, y = 430)
+    phone_otp_entry.place(x = 910, y = 430)
     
     back_button = ctk.CTkButton(verification_frame, text="Back", font=('Poppins', 26, 'bold'), height=45, width = 40, cursor='hand2',
                                 fg_color='orange', bg_color='white', text_color='white', hover_color='black',
@@ -2542,13 +2871,12 @@ if check_internet():
         messagebox.showerror('Read Error',f"An error occurred while reading the file '{file_path}'.")
 
     r_shop_name = shop_name[1:]
+
+    url = f"https://sms-backend-90tc.onrender.com/activated/{r_shop_name}"
+    response = requests.get(url)
     
-    shop_database = client[r_shop_name]
-    inventory = shop_database.stock_inventory
-    global_history = shop_database.Global_History
-    earnings = shop_database.Earnings
     
-    db_file_er = current_dir/"Data"/"decide.db"
+    db_file_er = os.path.join(current_dir, "Data", "decide.db")
 
     # Connect to the SQLite database
     conn_ern = sqlite3.connect(db_file_er)
@@ -2569,7 +2897,12 @@ if check_internet():
         }
 
         # Insert the data
-        insert_result = earnings.insert_one(data_ern)
+        url = f"https://sms-backend-90tc.onrender.com/add-new-earning"
+        payload = {
+            "shopname":r_shop_name,
+            "inserting":data_ern
+        }
+        responses = requests.post(url, json=payload) 
         print("INSERTED")
         cursor_ern.execute('''
             UPDATE mongoEarnings
@@ -2581,10 +2914,6 @@ if check_internet():
         conn_ern.commit()
     conn_ern.close()
         
-        
-    customer_care_database = client['Customer-Care']
-    cc_database = customer_care_database.cc_messages
-    
     
     dashboard_frame=Frame(win,height=770,width=1400,bg='red')
     dashboard_frame.propagate(False)
@@ -2712,6 +3041,10 @@ if check_internet():
     
     username_label = Label(dashboard_display, text='', font=('Poppins', 20), fg="black", bg = 'white')
     username_label.place(x = 100, y = 25)
+
+    refresh_button = ctk.CTkButton(dashboard_display, text="Refresh", font=("poppins", 16), bg_color="white", corner_radius=10, height=20,
+                                   cursor = "hand2", command=refreshEarnings)
+    refresh_button.place(x = 350, y = 130)
     
     day_label = Label(dashboard_display, text='Tuesday', font = ('Poppins', 15), fg="#6F6F6F", bg='white')
     day_label.place(x = 1000, y = 10 )
@@ -3425,6 +3758,7 @@ if check_internet():
                                    fg_color='#4B54F8', bg_color='white', text_color='white', corner_radius=20,
                                    hover_color='black')
     cc_send_button.place(x = 775, y = 450)
+
 
     win.mainloop()
     
