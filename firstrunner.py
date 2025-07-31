@@ -71,7 +71,7 @@ def generate_shop_id():
     
     shop_id = "BZ" + ''.join(random.choices(string.digits + string.ascii_uppercase, k=6))
     element = "ShopID"
-    url = f"http://127.0.0.1:8000/firstrunner-single/{element}/{shop_id}"
+    url = f"https://sms-backend-90tc.onrender.com/firstrunner-single/{element}/{shop_id}"
     response = requests.get(url)
     find_if_dup = response.json()
     # find_if_dup = collection.find_one({"ShopID":shop_id})
@@ -98,7 +98,7 @@ def open_tnc():
             if shopid_entry.get():
                 shop_name = shopname_entry.get().title().replace(' ', '') + shopid_entry.get().strip()
                 element = "Shopname ID"
-                url = f"http://127.0.0.1:8000/firstrunner-single/{element}/{shop_name}"
+                url = f"https://sms-backend-90tc.onrender.com/firstrunner-single/{element}/{shop_name}"
                 response = requests.get(url)
                 find_shopnameID = response.json()
 
@@ -106,7 +106,7 @@ def open_tnc():
                 if find_shopnameID:
                     element = "Shopname ID"
                     felement = "Multi Store"
-                    url = f"http://127.0.0.1:8000/firstrunner-multi/{element}/{shop_name}/{felement}"
+                    url = f"https://sms-backend-90tc.onrender.com/firstrunner-multi/{element}/{shop_name}/{felement}"
                     response = requests.get(url)
                     find_if_multi = response.json()
                     # find_if_multi = collection.find_one({"Shopname ID":shop_name}, {"Multi Store":1})
@@ -144,7 +144,7 @@ def insert_shopname_to_txt():
         "Multi Store": multi_yes_var.get(),
         "Total Users": 1 
     }
-    url = f"http://127.0.0.1:8000/firstrunner-insert"
+    url = f"https://sms-backend-90tc.onrender.com/firstrunner-insert"
     payload = {
         "to_add":to_add
     }
@@ -173,13 +173,13 @@ def on_submit():
             file.close()
             element = "Shopname ID"
             felement = "Total Users"
-            url = f"http://127.0.0.1:8000/firstrunner-multi/{element}/{shopnameID[0]}/{felement}"
+            url = f"https://sms-backend-90tc.onrender.com/firstrunner-multi/{element}/{shopnameID[0]}/{felement}"
             response = requests.get(url)
             total_users_get = response.json()
             # total_users_get = collection.find_one({"Shopname ID":shopnameID[0]}, {"Total Users":1})
             total_users_count = int(total_users_get["Total Users"]) + 1
 
-            url = f"http://127.0.0.1:8000/firstrunner-update/{shopnameID[0]}/{int(total_users_count)}"
+            url = f"https://sms-backend-90tc.onrender.com/firstrunner-update/{shopnameID[0]}/{int(total_users_count)}"
             response = requests.put(url)
             # collection.update_one({"Shopname ID":shopnameID[0]}, {"$set":{"Total Users":total_users_count}})
             messagebox.showinfo("Success", "Thank you for agreeing. You may proceed.")
