@@ -1823,27 +1823,30 @@ def show_local_history_data():
     cursor = conn.cursor()
 
     # Select all rows from the table
-    cursor.execute('SELECT * FROM lchistory')
-    rows = cursor.fetchall()
+    try:
+        cursor.execute('SELECT * FROM lchistory')
+        rows = cursor.fetchall()
 
-    # Convert each row to a dictionary
-    data = []
-    for row in rows:
-        row_dict = dict(row)
-        data.append(row_dict)
+        # Convert each row to a dictionary
+        data = []
+        for row in rows:
+            row_dict = dict(row)
+            data.append(row_dict)
 
-    conn.close()
-    
-    history_tree.tag_configure('sell', foreground="#f92d2d")  
-    history_tree.tag_configure('buy', foreground="#229954")
+        conn.close()
+        
+        history_tree.tag_configure('sell', foreground="#f92d2d")  
+        history_tree.tag_configure('buy', foreground="#229954")
 
-    # Example output
-    for row in data:
-        history_data_format = (row["Product_ID"], row["Product_Name"], row["Date"], row["Time"], row["Amount"], row["Action"])
-        if int(row["Action"]) < 0:
-            history_tree.insert("", END, values = history_data_format, tags=("sell",))
-        else:
-            history_tree.insert("", END, values = history_data_format, tags=("buy",))
+        # Example output
+        for row in data:
+            history_data_format = (row["Product_ID"], row["Product_Name"], row["Date"], row["Time"], row["Amount"], row["Action"])
+            if int(row["Action"]) < 0:
+                history_tree.insert("", END, values = history_data_format, tags=("sell",))
+            else:
+                history_tree.insert("", END, values = history_data_format, tags=("buy",))
+    except sqlite3.OperationalError:
+        messagebox.showinfo("Zero Activity", "No item is sold or added!")
 
 def show_global_history_data():
     global r_shop_name
@@ -1926,9 +1929,8 @@ def update_earnings():
     response = requests.get(url)
     globalhistory_data = response.json()
     # globalhistory_data = list(global_history.find())
+    now = datetime.now()
     if globalhistory_data:
-        now = datetime.now()
-
         tdate = now.strftime("%d/%m/%Y")
         
         for daad in globalhistory_data:
