@@ -88,7 +88,7 @@ def update_progress():
         daily_income_profit.configure(text=daily_ern.get("Daily_Income", "N/A"))
 
     except Exception as e:
-        print(f"Error in update_progress: ")
+        messagebox.showinfo("Updation Failed", "Request to update the daily income is aborted, Please try again! This is happening because you are using free version of Bazaro!")
 
 
 def update_daily_gui():
@@ -132,7 +132,7 @@ def update_week_progress():
         weekly_ern = response.json().get("value")
         weekly_income_profit.configure(text=weekly_ern.get("Weekly_Income", "N/A"))
     except Exception as e:
-        print(f"Error in update_week_progress:")
+        messagebox.showinfo("Updation Failed", "Request to update the weekly income is aborted, Please try again! This is happening because you are using free version of Bazaro!")
       
 
 def update_weekly_gui():
@@ -178,7 +178,8 @@ def update_month_progress():
         monthly_income_profit.configure(text=monthly_ern.get("Monthly_Income", "N/A"))
         
     except Exception as e:
-        print(f"Error in update_month_progress:")
+        messagebox.showinfo("Updation Failed", "Request to update the monthly income is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+
 
     
 def update_monthly_gui():
@@ -224,7 +225,7 @@ def new_password():
 
             validation = response.json().get("value")
         except (requests.exceptions.RequestException, requests.exceptions.ConnectionError) as e:
-            print("New_pass Error")
+            messagebox.showinfo("Updation Failed", "Request to update the new password is aborted, Please try again! This is happening because you are using free version of Bazaro!")
             validation = []
 
         if validation == "password":
@@ -246,7 +247,6 @@ def new_password():
 def sign_up():
     contentframe.pack_forget()
     sign_up_frame.pack()
-    # sign_up_canvas.pack()
 
 def try_login ():
     global username_list
@@ -260,30 +260,32 @@ def try_login ():
                 'password':password_value,
             }
         url = "https://sms-backend-90tc.onrender.com/login"  # Change to your actual host/port if different
+        try:
+            # Send GET request
+            response = requests.get(url, params=client_info_dict)
 
-        # Send GET request
-        response = requests.get(url, params=client_info_dict)
-
-        validation = response.json().get("value")
-        
-        if validation != "username":
-            if validation != "password":
-                contentframe.pack_forget()
-                dashboard_frame.pack()
-                username_label.config(text= username_value)
-                username_list.insert(0, username_value)
-                update_day_date_time()
-                update_daily_gui()
-                update_weekly_gui()
-                update_monthly_gui()
-                update_progress()
-                update_week_progress()
-                update_month_progress()
-                print(username_value,'\n',password_value)
+            validation = response.json().get("value")
+            
+            if validation != "username":
+                if validation != "password":
+                    contentframe.pack_forget()
+                    dashboard_frame.pack()
+                    username_label.config(text= username_value)
+                    username_list.insert(0, username_value)
+                    update_day_date_time()
+                    update_daily_gui()
+                    update_weekly_gui()
+                    update_monthly_gui()
+                    update_progress()
+                    update_week_progress()
+                    update_month_progress()
+                    print(username_value,'\n',password_value)
+                else:
+                    messagebox.showerror('Login Error', 'passowrd is wrong!')
             else:
-                messagebox.showerror('Login Error', 'passowrd is wrong!')
-        else:
-            messagebox.showerror('Login Error', 'username is wrong!')
+                messagebox.showerror('Login Error', 'username is wrong!')
+        except requests.exceptions.ConnectionError:
+            messagebox.showinfo("Login Failed", "Request to login is aborted, Please try again! This is happening because you are using free version of Bazaro!")
     else:
         messagebox.showerror('Connection Error', 'Please Check your internet connection!')
 
@@ -298,21 +300,28 @@ def reset_verify_otp():
         messagebox.showerror('Verification Error', 'incorrect OTP, please resend the otp and enter the correct one!')
 
 def reset_password():
+    '''
+    This is a function for reset button 
+    which finally inserts new password to the mongodb database!
+    '''
+
     global client_info
-    url = "https://sms-backend-90tc.onrender.com/resetpassword"  # Change to your actual host/port if different
+    try:
+        url = "https://sms-backend-90tc.onrender.com/resetpassword"  
 
-    # Query parameters
-    params = {
-        "username":username.get().strip(),
-        "newpass":resetpass.get()
-    }
-    response = requests.put(url, params=params)
-    new_pass_update = response.json().get("value")
+        params = {
+            "username":username.get().strip(),
+            "newpass":resetpass.get()
+        }
+        response = requests.put(url, params=params)
+        new_pass_update = response.json().get("value")
 
-    if new_pass_update is not None:
-        messagebox.showinfo('Password Reset', f'Your new password is {resetpass.get()}')
-        new_pass_frame.pack_forget()
-        contentframe.pack()
+        if new_pass_update is not None:
+            messagebox.showinfo('Password Reset', f'Your new password is {resetpass.get()}')
+            new_pass_frame.pack_forget()
+            contentframe.pack()
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Reset Failed", "Request to Reset the passowrd is aborted, Please try again! This is happening because you are using free version of Bazaro!")
 
 def reset_resend_otp():
     global new_email_list
@@ -361,6 +370,12 @@ def try_signup():
             
     
 def verify_otp():
+
+    '''
+    This function if called on a button click. When it is called new user is finally added to the 
+    mongodb database!
+    '''
+
     global otpl
     
     if email_otp.get() == str(otpl[0]):
@@ -371,29 +386,31 @@ def verify_otp():
             'email':email_signup.get().strip(),
             'phone':int(phone_signup.get().strip())
         }
-        
-        url =  "https://sms-backend-90tc.onrender.com/otp"
+        try:
+            url =  "https://sms-backend-90tc.onrender.com/otp"
 
-        params = {
-            "username": username_signup.get().strip(),  # Optional
-            "phone": int(phone_signup.get().strip()),     # Optional
-            "email": email_signup.get().strip()  # Optional
-        }
-        response = requests.get(url, params=params)
+            params = {
+                "username": username_signup.get().strip(),  # Optional
+                "phone": int(phone_signup.get().strip()),     # Optional
+                "email": email_signup.get().strip()  # Optional
+            }
+            response = requests.get(url, params=params)
 
-        find_val = response.json().get("value")
+            find_val = response.json().get("value")
 
-        if find_val is False:
-            messagebox.showerror('', 'username/phone/email already exist. Please Retry!')
-        else:
-            # update_server(client_info_dict)
-            url = "https://sms-backend-90tc.onrender.com/signup" 
-            response = requests.put(url, json=client_info_dict)
-            confirm = response.json().get("value")
-            if confirm == "Done":
-                messagebox.showinfo('Verification Done', 'Sign Up Successful!')
+            if find_val is False:
+                messagebox.showerror('', 'username/phone/email already exist. Please Retry!')
             else:
-                messagebox.showerror("Sign Up failed", "Please try again.")
+                # update_server(client_info_dict)
+                url = "https://sms-backend-90tc.onrender.com/signup" 
+                response = requests.put(url, json=client_info_dict)
+                confirm = response.json().get("value")
+                if confirm == "Done":
+                    messagebox.showinfo('Verification Done', 'Sign Up Successful!')
+                else:
+                    messagebox.showerror("Sign Up failed", "Please try again.")
+        except requests.exceptions.ConnectionError:
+            messagebox.showinfo("Sign Up Failed", "Request to Sign Up is aborted, Please try again! This is happening because you are using free version of Bazaro!")
     else:
         messagebox.showerror('Verification Error', 'incorrect OTP, please resend the otp and enter the correct one!')
 
@@ -598,21 +615,23 @@ def open_calendar1():
 
 def add_stock_to_dbs():
     global inventory, r_shop_name
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{barid.get()}"  
+        response = requests.get(url)
+        find_product_id = response.json().get("value")
 
-    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{barid.get()}"  
-    response = requests.get(url)
-    find_product_id = response.json().get("value")
-
-    # find_product_id = inventory.find_one(
-    # {"Product_ID": barid.get()})
-    url = f"https://sms-backend-90tc.onrender.com/productname/{r_shop_name}/{productname.get().lower()}"  
-    response = requests.get(url)
-    find_product_name = response.json().get("value")
-    
-    if find_product_id or find_product_name:
-        return "0"
-    else:
-        return "1"
+        # find_product_id = inventory.find_one(
+        # {"Product_ID": barid.get()})
+        url = f"https://sms-backend-90tc.onrender.com/productname/{r_shop_name}/{productname.get().lower()}"  
+        response = requests.get(url)
+        find_product_name = response.json().get("value")
+        
+        if find_product_id or find_product_name:
+            return "0"
+        else:
+            return "1"
+    except requests.exceptions.ConnectionError:
+        return True
 
 def create_inventory():
     folder_name = "database_folder"
@@ -722,7 +741,6 @@ def update_inventory_record(dict_to_update: dict):
     conn.commit()
     conn.close()
     
-    print(f"Product_ID {pid} updated successfully.")
 
 def add_stock():
     global inventory, r_shop_name
@@ -730,7 +748,7 @@ def add_stock():
         eligibility = add_stock_to_dbs()
 
         if eligibility is True:
-            print("True")
+            messagebox.showinfo("Updation Failed", "Request to update inventory is aborted, Please try again! This is happening because you are using free version of Bazaro!")
         elif eligibility is False:
             print("False")
         else:
@@ -750,25 +768,31 @@ def add_stock():
                                         'Manufacture_Date': mfdate.get(),
                                         'Expire_Date': expdate.get()
                                     }
+                                    try:
+                                        url = "https://sms-backend-90tc.onrender.com/update-product-group" 
+                                        payload = {
+                                            "shopname": r_shop_name,
+                                            "pid": barid.get(),
+                                            "new_val":product_dict_to_update # or "element_val" if that's the correct field name
+                                        }
+                                        response = requests.put(url, json=payload)
+                                        # inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
 
-                                    url = "https://sms-backend-90tc.onrender.com/update-product-group" 
-                                    payload = {
-                                        "shopname": r_shop_name,
-                                        "pid": barid.get(),
-                                        "new_val":product_dict_to_update # or "element_val" if that's the correct field name
-                                    }
-                                    response = requests.put(url, json=payload)
-                                    # inventory.update_one({'Product_ID':barid.get()}, {"$set":product_dict_to_update})
-
-                                    update_inventory_record({"pid":barid.get(), "new_val":product_dict_to_update})
-
-                                    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
-                                    response = requests.get(url)
-                                    find_product_name_lc = response.json().get("value")["Product_Name"]
-                                    find_product_cp_lc = response.json().get("value")["Cost_Price"]
-                                    
-                                    localhistory_update(product_id1 = barid.get(), product_name1 = find_product_name_lc, amount1 = find_product_cp_lc*float(productqty.get()), action1 = int(productqty.get()))
-                                    globalhistory_update(product_id1s = barid.get(), product_name1s = find_product_name_lc ,amount1s = find_product_cp_lc*float(productqty.get()) , action1s = int(productqty.get()))
+                                        update_inventory_record({"pid":barid.get(), "new_val":product_dict_to_update})
+                                    except requests.exceptions.ConnectionError:
+                                        messagebox.showinfo("Updation Failed", "Request to update the inventory is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+                                        return
+                                    try:
+                                        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
+                                        response = requests.get(url)
+                                        find_product_name_lc = response.json().get("value")["Product_Name"]
+                                        find_product_cp_lc = response.json().get("value")["Cost_Price"]
+                                        
+                                        localhistory_update(product_id1 = barid.get(), product_name1 = find_product_name_lc, amount1 = find_product_cp_lc*float(productqty.get()), action1 = int(productqty.get()))
+                                        globalhistory_update(product_id1s = barid.get(), product_name1s = find_product_name_lc ,amount1s = find_product_cp_lc*float(productqty.get()) , action1s = int(productqty.get()))
+                                    except requests.exceptions.ConnectionError:
+                                        messagebox.showwarning("Updation Failed", "Request to update the history is aborted, Don't try again! This is happening because you are using free version of Bazaro!")
+                                        return
 
                                     messagebox.showinfo('Stock Update', f"Stock with ID {barid.get()} is updated!")
                                 else:
@@ -827,18 +851,21 @@ def add_stock():
                     'Manufacture_Date': mfdate.get(),
                     'Expire_Date': expdate.get()
                 }
-                url = "https://sms-backend-90tc.onrender.com/new-stock" 
-                payload = {
-                    "shopname":r_shop_name,
-                    "inserting":product_dict_to_add
-                }
-                response = requests.post(url, json=payload)
+                try:
+                    url = "https://sms-backend-90tc.onrender.com/new-stock" 
+                    payload = {
+                        "shopname":r_shop_name,
+                        "inserting":product_dict_to_add
+                    }
+                    response = requests.post(url, json=payload)
 
-                add_to_inventory(product_dict_to_add)
-                localhistory_update(product_id1 = barid.get(), product_name1 = productname.get().lower(), amount1 = float(cp.get())*float(productqty.get()), action1 = int(productqty.get()))
-                globalhistory_update(product_id1s = barid.get(), product_name1s = productname.get().lower() ,amount1s = float(cp.get())*float(productqty.get()) , action1s = int(productqty.get()))
+                    add_to_inventory(product_dict_to_add)
+                    localhistory_update(product_id1 = barid.get(), product_name1 = productname.get().lower(), amount1 = float(cp.get())*float(productqty.get()), action1 = int(productqty.get()))
+                    globalhistory_update(product_id1s = barid.get(), product_name1s = productname.get().lower() ,amount1s = float(cp.get())*float(productqty.get()) , action1s = int(productqty.get()))
 
-                messagebox.showinfo('Successfull', 'Product Added Successfully!')
+                    messagebox.showinfo('Successfull', 'Product Added Successfully!')
+                except requests.exceptions.ConnectionError:
+                    messagebox.showinfo("Updation Failed", "Request to update the Inventory is aborted, Please try again! This is happening because you are using free version of Bazaro!")
             else:
                 pass
         except UnboundLocalError:
@@ -874,7 +901,7 @@ def find_item_in_update():
         response = requests.get(url)
         find_product = response.json().get("value")
     except requests.exceptions.ConnectionError as e:
-        print("Search error in find item in update")
+        messagebox.showinfo("Search Failed", "Request search the product is aborted, Please try again! This is happening because you are using free version of Bazaro!")
         find_product = []
     try:
         if find_product:
@@ -905,6 +932,7 @@ def update_product():
                     "element_var": newproductval.get().strip()  # or "element_val" if that's the correct field name
                 }
                 response = requests.put(url, json=payload)
+                update_inventory_record({"pid":payload['pid'], "new_val":{"Product_Name":newproductval.get().strip()}})
             if len(newcpval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -913,7 +941,7 @@ def update_product():
                     "element_var": float(newcpval.get())  # or "element_val" if that's the correct field name
                 }
                 response = requests.put(url, json=payload)
-
+                update_inventory_record({"pid":update_ID, "new_val":{"Cost_Price":float(newcpval.get())}})
             if len(newspval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -922,7 +950,7 @@ def update_product():
                     "element_var": float(newspval.get()) # or "element_val" if that's the correct field name
                 }
                 response = requests.put(url, json=payload)
-
+                update_inventory_record({"pid":update_ID, "new_val":{"Selling_Price":float(newspval.get())}})
             if len(newtaxval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -931,7 +959,7 @@ def update_product():
                     "element_var": float(newtaxval.get())  # or "element_val" if that's the correct field name
                 }
                 response = requests.put(url, json=payload)
-
+                update_inventory_record({"pid":update_ID, "new_val":{"Tax":float(newtaxval.get())}})
             if len(newdiscountval.get()) != 0:
                 payload = {
                     "shopname": r_shop_name,
@@ -940,10 +968,12 @@ def update_product():
                     "element_var": float(newdiscountval.get())  # or "element_val" if that's the correct field name
                 }
                 response = requests.put(url, json=payload)
-
+                update_inventory_record({"pid":update_ID, "new_val":{"Discount":float(newdiscountval.get())}})
             messagebox.showinfo('Update', 'Updated!')
         except ValueError:
             messagebox.showerror('Invalid Input/s', 'Cost Price, Selling Price, Tax and Discount should not be any alphabet and should be greater than zero')
+        except requests.exceptions.ConnectionError:
+            messagebox.showinfo("Updation Failed", "Request to update the update invemtory is aborted, Please try again! This is happening because you are using free version of Bazaro!")
     else:
         messagebox.showerror('ID Error', 'ID Not Found!')
     
@@ -963,10 +993,13 @@ def fetch_and_display_inventory():
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
-    response = requests.get(url)
-    data = response.json()
-
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+        response = requests.get(url)
+        data = response.json()
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Fetch Failed", "Request to fetch the inventory data is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+        return
     if not data:
         analytics_board.insert(END, "No data found in the database.")
         return
@@ -1020,17 +1053,18 @@ def analytics_idsrc_display():
     global r_shop_name
     analytics_board.config(state=NORMAL)
     analytics_board.delete("1.0", END)
-    url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{analytics_src_val.get()}"
-    response = requests.get(url)
-    find_product_id = response.json().get("value")
-
-
-    if find_product_id:
-        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{analytics_src_val.get()}"
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{analytics_src_val.get()}"
         response = requests.get(url)
-        product_dict = response.json().get("value")
+        find_product_id = response.json().get("value")
 
-        arranged_product = f'''
+
+        if find_product_id:
+            url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{analytics_src_val.get()}"
+            response = requests.get(url)
+            product_dict = response.json().get("value")
+
+            arranged_product = f'''
 #######---- Product Found ----#######
 
 Product_ID:       {analytics_src_val.get()},
@@ -1042,9 +1076,11 @@ Expire_Date:      {product_dict['Expire_Date']},
 Tax:              {product_dict['Tax']},
 Discount:         {product_dict['Discount']}
         '''
-        analytics_board.insert(END, arranged_product)
-    else:
-        messagebox.showerror('Wrong ID', 'Product not found!')
+            analytics_board.insert(END, arranged_product)
+        else:
+            messagebox.showerror('Wrong ID', 'Product not found!')
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Fetch Failed", "Request to Display product details is aborted, Please try again! This is happening because you are using free version of Bazaro!")
 
 # analytics_option = ['All', 'Cost, Selling Price', 'Product, Selling Price','Product, Cost Price', 'Product, Discount', 'Product, Tax', 'Product, Tax, Discount']
 
@@ -1054,9 +1090,13 @@ def fetch_and_display_analytics(selected_columns):
     analytics_board.delete("1.0", END)
 
     # Fetch data from MongoDB and create DataFrame
-    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
-    response = requests.get(url)
-    data = response.json()
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+        response = requests.get(url)
+        data = response.json()
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Fetch Failed", "Request to fetch the custom details is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+        return
     # data = list(inventory.find())
     if not data:
         analytics_board.insert(END, "No data found in the database.")
@@ -1152,9 +1192,13 @@ def export_inventory_to_excel(selected_columns):
         return
 
     # Fetch data from MongoDB
-    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
-    response = requests.get(url)
-    data = response.json()
+    try:    
+        url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+        response = requests.get(url)
+        data = response.json()
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Export Failed", "Request to export to excel is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+        return
     # data = list(inventory.find())
     if not data:
         print("No data found in the database.")
@@ -1254,28 +1298,32 @@ def get_cc_text():
         now = datetime.now()
         date_time_cc = now.strftime("%Y-%m-%d %H:%M:%S")
 
-        url =  f"https://sms-backend-90tc.onrender.com/email/{username_list[0]}"
-        response = requests.get(url)
-        email = response.json().get("value") 
+        try:
+            url =  f"https://sms-backend-90tc.onrender.com/email/{username_list[0]}"
+            response = requests.get(url)
+            email = response.json().get("value") 
+        
 
 
-        if email != "404":
-            cc_message = {
-                'Shop':r_shop_name,
-                'Email':email,
-                'Time': date_time_cc,
-                'Message': content_cc
-            }
+            if email != "404":
+                cc_message = {
+                    'Shop':r_shop_name,
+                    'Email':email,
+                    'Time': date_time_cc,
+                    'Message': content_cc
+                }
 
-            url = "https://sms-backend-90tc.onrender.com/ccmessage"
-            payload = {
-                "message":cc_message
-            }
-            response = requests.post(url, json=payload)
+                url = "https://sms-backend-90tc.onrender.com/ccmessage"
+                payload = {
+                    "message":cc_message
+                }
+                response = requests.post(url, json=payload)
 
-            messagebox.showinfo('Customer Care', f'Message sent successfully.The reply will sent to your email {email}')
-        else:
-            messagebox.showerror('Customer Care', "Can't send the message! Please login again.")
+                messagebox.showinfo('Customer Care', f'Message sent successfully.The reply will sent to your email {email}')
+            else:
+                messagebox.showerror('Customer Care', "Can't send the message! Please login again.")
+        except requests.exceptions.ConnectionError:
+            messagebox.showinfo("Sent Failed", "Request to sent the message is aborted, Please try again! This is happening because you are using free version of Bazaro!")
     else:
         messagebox.showerror('Customer Care', "Can't send empty message!")
 def insert_in_alert_textbox(idee):
@@ -1339,10 +1387,13 @@ def insert_data_to_alert_treeview():
         
     alert_tree_expire.tag_configure('expiring_soon', foreground='red')
     alert_tree_expire.tag_configure('expiring_late', foreground='green')
-    
-    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
-    response = requests.get(url)
-    inventory_data = response.json()
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+        response = requests.get(url)
+        inventory_data = response.json()
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Action Failed", "Request to update the alert tree is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+        return
     # inventory_data = inventory.find({})                   
     count = 1
     
@@ -1371,28 +1422,31 @@ def insert_data_to_alert_treeview():
         
 def insert_data_to_alert_treeview_stock():
     global r_shop_name
-    url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
-    response = requests.get(url)
-    inventory_data = response.json()
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+        response = requests.get(url)
+        inventory_data = response.json()
 
-    # inventory_data = inventory.find({})
-    for items in alert_tree_stock.get_children():
-        alert_tree_stock.delete(items)
-    
-    alert_tree_stock.tag_configure('stock_low', foreground='red')
-    alert_tree_stock.tag_configure('stock_ok', foreground='green')
-    
-    count2 = 1
-    for  stockk in inventory_data:
-        if stockk['Quantity'] <= 20:
-            item = (count2, stockk['Product_ID'], stockk['Product_Name'], stockk['Quantity'])
-            alert_tree_stock.insert("", "end", values=item, tags=('stock_low',) )
-            count2 = count2+1
-        else:
-            # item = (count2, stockk['Product_ID'], stockk['Product_Name'], stockk['Quantity'])
-            # alert_tree_stock.insert("", "end", values=item, tags=('stock_ok',))
-            # count2 = count2+1
-            pass
+        # inventory_data = inventory.find({})
+        for items in alert_tree_stock.get_children():
+            alert_tree_stock.delete(items)
+        
+        alert_tree_stock.tag_configure('stock_low', foreground='red')
+        alert_tree_stock.tag_configure('stock_ok', foreground='green')
+        
+        count2 = 1
+        for  stockk in inventory_data:
+            if stockk['Quantity'] <= 20:
+                item = (count2, stockk['Product_ID'], stockk['Product_Name'], stockk['Quantity'])
+                alert_tree_stock.insert("", "end", values=item, tags=('stock_low',) )
+                count2 = count2+1
+            else:
+                # item = (count2, stockk['Product_ID'], stockk['Product_Name'], stockk['Quantity'])
+                # alert_tree_stock.insert("", "end", values=item, tags=('stock_ok',))
+                # count2 = count2+1
+                pass
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Action Failed", "Request to update the stock alert tree is aborted, Please try again! This is happening because you are using free version of Bazaro!")
 
             
 def clear_alert_texbox():
@@ -1852,11 +1906,13 @@ def show_global_history_data():
     global r_shop_name
     for item in glo_history_tree.get_children():
         glo_history_tree.delete(item)
-    
-    url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
-    response = requests.get(url)
-    glob_history_data = response.json()
-
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
+        response = requests.get(url)
+        glob_history_data = response.json()
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Fetch Failed", "Request to fetch the global history is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+        return
     # glob_history_data = global_history.find()
 
     glo_history_tree.tag_configure('sell', foreground="#f92d2d")  
@@ -1925,75 +1981,78 @@ sum_amount_month = 0
 
 def update_earnings():
     global sum_amount_day, sum_amount_month, sum_amount_week, r_shop_name
-    url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
-    response = requests.get(url)
-    globalhistory_data = response.json()
-    # globalhistory_data = list(global_history.find())
-    now = datetime.now()
-    if globalhistory_data:
-        tdate = now.strftime("%d/%m/%Y")
-        
-        for daad in globalhistory_data:
-            # print(daad)
-            if daad["action"] < 0:
-                if tdate == daad["date"]:
-                    # print(daad)
-                    add_amount_day = float(daad["amount"])
-                    sum_amount_day = sum_amount_day + add_amount_day
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/global-history/{r_shop_name}"
+        response = requests.get(url)
+        globalhistory_data = response.json()
+        # globalhistory_data = list(global_history.find())
+        now = datetime.now()
+        if globalhistory_data:
+            tdate = now.strftime("%d/%m/%Y")
+            
+            for daad in globalhistory_data:
+                # print(daad)
+                if daad["action"] < 0:
+                    if tdate == daad["date"]:
+                        # print(daad)
+                        add_amount_day = float(daad["amount"])
+                        sum_amount_day = sum_amount_day + add_amount_day
 
 
-        for daam in globalhistory_data:
-            # print("Entered Loop")
-            if daam["action"] < 0:
-                # print("Found Action")
-                if now.month == int(daam["date"].split('/')[1]):
-                    # print("Enterted Sum area")
-                    add_amount_month = float(daam["amount"])
-                    sum_amount_month = sum_amount_month + add_amount_month
-                 
-        week_list = get_week_dates(tdate)
-
-        for daaw in globalhistory_data:
-            if daaw["action"] < 0:
-                if daaw["date"] in week_list:
-                    add_amount_week = float(daaw["amount"])
-                    sum_amount_week = sum_amount_week + add_amount_week
+            for daam in globalhistory_data:
+                # print("Entered Loop")
+                if daam["action"] < 0:
+                    # print("Found Action")
+                    if now.month == int(daam["date"].split('/')[1]):
+                        # print("Enterted Sum area")
+                        add_amount_month = float(daam["amount"])
+                        sum_amount_month = sum_amount_month + add_amount_month
                     
-        
-    # print(sum_amount_day)
-    # print(sum_amount_week)
-    # print(sum_amount_month)
-    tdate2 = now.strftime("%Y-%m-%d")
-    wn, month = get_current_week_of_month()
-    wn_name = "Week"+str(wn)
+            week_list = get_week_dates(tdate)
 
-    yearr = now.year
-    update_monthly_income(month, yearr, sum_amount_month)
-    upsert_income(tdate2, sum_amount_day)
-    upsert_income_weekly(wn_name, month, sum_amount_week)
+            for daaw in globalhistory_data:
+                if daaw["action"] < 0:
+                    if daaw["date"] in week_list:
+                        add_amount_week = float(daaw["amount"])
+                        sum_amount_week = sum_amount_week + add_amount_week
+                        
+            
+        # print(sum_amount_day)
+        # print(sum_amount_week)
+        # print(sum_amount_month)
+        tdate2 = now.strftime("%Y-%m-%d")
+        wn, month = get_current_week_of_month()
+        wn_name = "Week"+str(wn)
 
-    update_dict = {
-        "Daily_Income":sum_amount_day,
-        "Weekly_Income":sum_amount_week,
-        "Monthly_Income":sum_amount_month
-    }
-    url = "https://sms-backend-90tc.onrender.com/updated-earnings"
-    payload = {
-        "shopname": r_shop_name,
-        "inserting": update_dict
-    }
-    response = requests.put(url, json=payload)
-    # update_earning = earnings.update_one({"Earning_ID":101},
-    #                                      {
-    #                                          "$set":{
-    #                                              "Daily_Income":sum_amount_day,
-    #                                              "Weekly_Income":sum_amount_week,
-    #                                              "Monthly_Income":sum_amount_month
-    #                                          }
-    #                                      })
-    sum_amount_day = 0  
-    sum_amount_week = 0
-    sum_amount_month = 0
+        yearr = now.year
+        update_monthly_income(month, yearr, sum_amount_month)
+        upsert_income(tdate2, sum_amount_day)
+        upsert_income_weekly(wn_name, month, sum_amount_week)
+
+        update_dict = {
+            "Daily_Income":sum_amount_day,
+            "Weekly_Income":sum_amount_week,
+            "Monthly_Income":sum_amount_month
+        }
+        url = "https://sms-backend-90tc.onrender.com/updated-earnings"
+        payload = {
+            "shopname": r_shop_name,
+            "inserting": update_dict
+        }
+        response = requests.put(url, json=payload)
+        # update_earning = earnings.update_one({"Earning_ID":101},
+        #                                      {
+        #                                          "$set":{
+        #                                              "Daily_Income":sum_amount_day,
+        #                                              "Weekly_Income":sum_amount_week,
+        #                                              "Monthly_Income":sum_amount_month
+        #                                          }
+        #                                      })
+        sum_amount_day = 0  
+        sum_amount_week = 0
+        sum_amount_month = 0
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Updation Failed", "Request to update Earnings is aborted, Please try again! This is happening because you are using free version of Bazaro!")
 
 
 
@@ -2873,10 +2932,12 @@ if check_internet():
         messagebox.showerror('Read Error',f"An error occurred while reading the file '{file_path}'.")
 
     r_shop_name = shop_name[1:]
-
-    url = f"https://sms-backend-90tc.onrender.com/activated/{r_shop_name}"
-    response = requests.get(url)
-    
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/activated/{r_shop_name}"
+        response = requests.get(url)
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Activation Failed", "Request to initialize the app is aborted, Restart the app again! This is happening because you are using free version of Bazaro!")
+        exit()
     
     db_file_er = os.path.join(current_dir, "Data", "decide.db")
 
@@ -2899,13 +2960,17 @@ if check_internet():
         }
 
         # Insert the data
-        url = f"https://sms-backend-90tc.onrender.com/add-new-earning"
-        payload = {
-            "shopname":r_shop_name,
-            "inserting":data_ern
-        }
-        responses = requests.post(url, json=payload) 
-        print("INSERTED")
+        try:
+            url = f"https://sms-backend-90tc.onrender.com/add-new-earning"
+            payload = {
+                "shopname":r_shop_name,
+                "inserting":data_ern
+            }
+            responses = requests.post(url, json=payload) 
+        except requests.exceptions.ConnectionError:
+            messagebox.showinfo("Activation Failed", "Request to initialize the earning data is aborted, Restart the app again! This is happening because you are using free version of Bazaro!")
+            exit()
+        messagebox.showinfo("Succesful Initialization", "App is ready to use now!")
         cursor_ern.execute('''
             UPDATE mongoEarnings
             SET decidee = ?
