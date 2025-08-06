@@ -71,9 +71,13 @@ def generate_shop_id():
     
     shop_id = "BZ" + ''.join(random.choices(string.digits + string.ascii_uppercase, k=6))
     element = "ShopID"
-    url = f"https://sms-backend-90tc.onrender.com/firstrunner-single/{element}/{shop_id}"
-    response = requests.get(url)
-    find_if_dup = response.json()
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/firstrunner-single/{element}/{shop_id}"
+        response = requests.get(url)
+        find_if_dup = response.json()
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Retry", "Please select again!")
+        return
     # find_if_dup = collection.find_one({"ShopID":shop_id})
     if not find_if_dup:
         shopid.insert(0, shop_id)
@@ -98,27 +102,30 @@ def open_tnc():
             if shopid_entry.get():
                 shop_name = shopname_entry.get().title().replace(' ', '') + shopid_entry.get().strip()
                 element = "Shopname ID"
-                url = f"https://sms-backend-90tc.onrender.com/firstrunner-single/{element}/{shop_name}"
-                response = requests.get(url)
-                find_shopnameID = response.json()
-
-                # find_shopnameID = collection.find_one({"Shopname ID":shop_name})
-                if find_shopnameID:
-                    element = "Shopname ID"
-                    felement = "Multi Store"
-                    url = f"https://sms-backend-90tc.onrender.com/firstrunner-multi/{element}/{shop_name}/{felement}"
+                try:
+                    url = f"https://sms-backend-90tc.onrender.com/firstrunner-single/{element}/{shop_name}"
                     response = requests.get(url)
-                    find_if_multi = response.json()
-                    # find_if_multi = collection.find_one({"Shopname ID":shop_name}, {"Multi Store":1})
-                    if find_if_multi["Multi Store"] == 1:
-                        shopnameID.insert(0, shop_name)
-                        shop_details_frame.pack_forget()
-                        tnc_frame.pack(fill='both', expand=True)
-                        messagebox.showinfo('Shop Listed', 'Your shop is listed on Bazaro..')
+                    find_shopnameID = response.json()
+
+                    # find_shopnameID = collection.find_one({"Shopname ID":shop_name})
+                    if find_shopnameID:
+                        element = "Shopname ID"
+                        felement = "Multi Store"
+                        url = f"https://sms-backend-90tc.onrender.com/firstrunner-multi/{element}/{shop_name}/{felement}"
+                        response = requests.get(url)
+                        find_if_multi = response.json()
+                        # find_if_multi = collection.find_one({"Shopname ID":shop_name}, {"Multi Store":1})
+                        if find_if_multi["Multi Store"] == 1:
+                            shopnameID.insert(0, shop_name)
+                            shop_details_frame.pack_forget()
+                            tnc_frame.pack(fill='both', expand=True)
+                            messagebox.showinfo('Shop Listed', 'Your shop is listed on Bazaro..')
+                        else:
+                            messagebox.showinfo("No Multi store", "The shop is registered as 'NO MULTI STORE' on Bazaro. Thus No more than one login.")
                     else:
-                        messagebox.showinfo("No Multi store", "The shop is registered as 'NO MULTI STORE' on Bazaro. Thus No more than one login.")
-                else:
-                    messagebox.showwarning('Unlisted', 'Your shop is not listed on Bazaro..')
+                        messagebox.showwarning('Unlisted', 'Your shop is not listed on Bazaro..')
+                except requests.exceptions.ConnectionError:
+                    messagebox.showinfo("Retry", "Please Click the button again!")
             else:
                 messagebox.showwarning('Shop ID', 'Please provide the shop ID before procceeding.')
     else:
@@ -144,11 +151,15 @@ def insert_shopname_to_txt():
         "Multi Store": multi_yes_var.get(),
         "Total Users": 1 
     }
-    url = f"https://sms-backend-90tc.onrender.com/firstrunner-insert"
-    payload = {
-        "to_add":to_add
-    }
-    response = requests.post(url, json=payload)
+    try:
+        url = f"https://sms-backend-90tc.onrender.com/firstrunner-insert"
+        payload = {
+            "to_add":to_add
+        }
+        response = requests.post(url, json=payload)
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Restart", "Unable to update database, Please restart setup!")
+        exit()
 
     # collection.insert_one({
     #     "ShopID": shopid[0],
@@ -173,14 +184,18 @@ def on_submit():
             file.close()
             element = "Shopname ID"
             felement = "Total Users"
-            url = f"https://sms-backend-90tc.onrender.com/firstrunner-multi/{element}/{shopnameID[0]}/{felement}"
-            response = requests.get(url)
-            total_users_get = response.json()
-            # total_users_get = collection.find_one({"Shopname ID":shopnameID[0]}, {"Total Users":1})
-            total_users_count = int(total_users_get["Total Users"]) + 1
+            try:
+                url = f"https://sms-backend-90tc.onrender.com/firstrunner-multi/{element}/{shopnameID[0]}/{felement}"
+                response = requests.get(url)
+                total_users_get = response.json()
+                # total_users_get = collection.find_one({"Shopname ID":shopnameID[0]}, {"Total Users":1})
+                total_users_count = int(total_users_get["Total Users"]) + 1
 
-            url = f"https://sms-backend-90tc.onrender.com/firstrunner-update/{shopnameID[0]}/{int(total_users_count)}"
-            response = requests.put(url)
+                url = f"https://sms-backend-90tc.onrender.com/firstrunner-update/{shopnameID[0]}/{int(total_users_count)}"
+                response = requests.put(url)
+            except requests.exceptions.ConnectionError:
+                messagebox.showinfo("Retry", "Please click the button again!")
+                return
             # collection.update_one({"Shopname ID":shopnameID[0]}, {"$set":{"Total Users":total_users_count}})
             messagebox.showinfo("Success", "Thank you for agreeing. You may proceed.")
         # Proceed to next step in app setup
