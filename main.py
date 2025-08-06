@@ -755,9 +755,13 @@ def add_stock():
             if eligibility == '0':
                 response = messagebox.askyesno("Confirm", "The Product with the given ID ot Name already exist. Do you want to update stock Quantity?")
                 if response:
-                    url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
-                    response = requests.get(url)
-                    check_quantity = response.json().get("value")
+                    try:
+                        url = f"https://sms-backend-90tc.onrender.com/productDetail/{r_shop_name}/{barid.get()}"
+                        response = requests.get(url)
+                        check_quantity = response.json().get("value")
+                    except requests.exceptions.ConnectionError:
+                         messagebox.showinfo("Updation Failed", "Request to update the inventory is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+                         return
                     # check_quantity = inventory.find_one({'Product_ID':barid.get()}, {'Quantity':1})
                     if check_quantity:
                         if check_quantity['Quantity'] == 0:
@@ -1670,33 +1674,42 @@ def gen_bill_win():
                 y_position = paper_height - 10 * mm
 
         c.save()
-        messagebox.showinfo("Bill Saved", "Bill Saved Successfully.")
-        
-        for pdid, itemm in data_dict.items():
-            url = "https://sms-backend-90tc.onrender.com/stocks"  
 
-            params = {
-                "pdid": str(pdid),
-                "quantity": int(itemm["Quantity"]),
-                "shopname": r_shop_name
+        try:
+            url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+            response = requests.get(url)
+        except requests.exceptions.ConnectionError:
+            messagebox.showinfo("Action Failed", "Request to generate bill is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+            return
+        data = response.json()
+        new_dict = {}
+        for pdid, itemm in data_dict.items():
+            for values in data:
+                if values["Product_ID"] == str(pdid):
+                    new_dict[str(pdid)] = {"Quantity":values["Quantity"]-int(itemm["Quantity"])}
+                    break
+        try:
+            url = "https://sms-backend-90tc.onrender.com/bulk-update"
+
+            payload = {
+                "shopname": r_shop_name,
+                "new_val": new_dict
             }
 
-            # Make the PUT request
-            response = requests.put(url, params=params)
-            result_found = response.json().get("value")
-            val = decrease_product_quantity(str(pdid), amount=int(itemm["Quantity"]))
-            # result_found = inventory.update_one(
-            #     {"Product_ID": str(pdid)},
-            #     {"$inc": {"Quantity": -int(itemm["Quantity"])}}
-            # )
-            if result_found <= 0:
-                print("Can't update the db")
+            response = requests.put(url, json=payload)
+
+        except requests.exceptions.ConnectionError:
+            messagebox.showinfo("Update Failed", "Request to update database is aborted, Please try again! This is happening because you are using free version of Bazaro!")
+            return
         
+        for pdid, itemm in data_dict.items():
+            val = decrease_product_quantity(str(pdid), amount=int(itemm["Quantity"]))
             localhistory_update(product_id1 = pdid, product_name1 = itemm["Product Name"],amount1 = itemm["Amount"], action1 = -int(itemm["Quantity"]))
             globalhistory_update(product_id1s = pdid, product_name1s = itemm["Product Name"], amount1s = itemm["Amount"], action1s = -int(itemm["Quantity"]))
 
-        update_earnings()
+        messagebox.showinfo("Bill Saved", "Bill Saved Successfully.")
         webbrowser.open(f"file://{os.path.abspath(full_path)}")
+        update_earnings()
         bill_win.destroy()
             
     bill_win = Toplevel(win)
@@ -1834,7 +1847,10 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
             email = "None"
     except IndexError:
         email = "None"
-    
+    except requests.exceptions.ConnectionError:
+        messagebox.showinfo("Fetch Failed", "Unable to get the email!(Connection Aborted)")
+        email = "None"
+
     now = datetime.now()
 
 
@@ -1852,14 +1868,26 @@ def globalhistory_update(product_id1s, product_name1s,amount1s, action1s):
         "amount" : amount1s,
         "action" : action1s
     }
+    def retry():
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                url = "https://sms-backend-90tc.onrender.com/add-global-data"
+                payload = {
+                    "shopname": r_shop_name,
+                    "inserting": glob_history_dict
+                }
+                response = requests.post(url, json=payload)
+                if response.ok:
+                    return  # Success, exit function
+            except requests.exceptions.ConnectionError:
+                if attempt < max_retries - 1:
+                    messagebox.showinfo("Updation Failed", f"Attempt {attempt+1} failed. Retrying...")
+                else:
+                    messagebox.showerror("Final Failure", "Failed to update global history after multiple attempts. Your Earning will not be updated for this request!")
 
-    url = "https://sms-backend-90tc.onrender.com/add-global-data"
-    payload = {
-        "shopname":r_shop_name,
-        "inserting":glob_history_dict
-    }
-
-    response = requests.post(url, json=payload)
+    
+    retry()
 
     # global_history.insert_one(glob_history_dict)
 
@@ -2052,8 +2080,7 @@ def update_earnings():
         sum_amount_week = 0
         sum_amount_month = 0
     except requests.exceptions.ConnectionError:
-        messagebox.showinfo("Updation Failed", "Request to update Earnings is aborted, Please try again! This is happening because you are using free version of Bazaro!")
-
+        messagebox.showinfo("Refresh the Dashboard to see updated earnings!")
 
 
 

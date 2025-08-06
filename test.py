@@ -1,27 +1,41 @@
-from pymongo import MongoClient, UpdateOne
+# from pymongo import MongoClient, UpdateOne
 
-# MongoDB connection
-mongo_uri = "your_mongo_uri_here"
-client = MongoClient(mongo_uri)
+# # MongoDB connection
+# mongo_uri = "your_mongo_uri_here"
+# client = MongoClient(mongo_uri)
 
-# Access your database and collection
-db = client["your_database_name"]
-collection = db["your_collection_name"]
+# # Access your database and collection
+# db = client["your_database_name"]
+# collection = db["your_collection_name"]
 
-# Your data to update
-update_data = {
-    "p1": {"Quantity": 11},
-    "p2": {"Quantity": 10}
-}
+# # Your data to update
+# update_data = {
+#     "p1": {"Quantity": 11},
+#     "p2": {"Quantity": 10}
+# }
 
-# Prepare bulk operations (still one-liner-style, no for-loop from you)
-operations = [
-    UpdateOne({"_id": key}, {"$set": value}, upsert=True)
-    for key, value in update_data.items()
-]
+# # Prepare bulk operations (still one-liner-style, no for-loop from you)
+# operations = [
+#     UpdateOne({"_id": key}, {"$set": value}, upsert=True)
+#     for key, value in update_data.items()
+# ]
 
-# Execute all updates in one go
-if operations:
-    collection.bulk_write(operations)
+# # Execute all updates in one go
+# if operations:
+#     collection.bulk_write(operations)
 
-print("Bulk update completed.")
+# print("Bulk update completed.")
+import requests
+r_shop_name = "Adarsh-Kirana-Store"
+url = f"https://sms-backend-90tc.onrender.com/getall/inventory/{r_shop_name}"
+response = requests.get(url)
+data = response.json()
+
+d = {}
+
+for i in data:
+    if i["Product_ID"] == "112122569":
+        d[i["Product_ID"]] = {"Quantity":i["Quantity"]}
+
+
+print(d)
