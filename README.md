@@ -4,12 +4,16 @@
 ![Tkinter](https://img.shields.io/badge/Tkinter-GUI-green)
 ![MongoDB](https://img.shields.io/badge/Database-MongoDB-brightgreen)
 ![CustomTkinter](https://img.shields.io/badge/CustomTkinter-UI-orange)
+![FastAPI](https://img.shields.io/badge/FastAPI-Backend-teal)
+![Render](https://img.shields.io/badge/Hosting-Render-blueviolet)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
 
 ## Overview
 **Bazaro** is an intelligent and user-friendly inventory and shop management system designed for small to medium-sized businesses. It helps store owners manage their stock, sales, billing, customer relations, and more with powerful features and an intuitive GUI.
 
----
+## About this branch
+This branch **(bazaro/server-main)** is a production level branch based on **API** whose server is handled by render and github via CI/CD pipeline.
+  
 
 ## Core Features
 
@@ -26,37 +30,38 @@
 - Accept multiple payment methods (Cash, Card, UPI)
 - Print and save bills as PDF
 - Real-time stock deduction
-- Daily, Weekly, Monthly earning progress bar
+- Daily, Weekly, Monthly earning progress bar 
 
 ### ▶ Customer Management
 - Manage customer profiles
 - View customer purchase history
-- Loyalty and reward point system
-- Personalized discount support
 
-### ▶ Supplier Management
-- Supplier profile creation
+### ▶ Supplier Management (under development)
+- Supplier profile creation 
 - Purchase order generation
 - Auto alerts for stock replenishment
 
 ### ▶ Reports & Analytics
-- View daily, weekly, monthly sales
-- Track profit/loss and inventory performance
-- Best-selling product analytics
+- View daily, weekly, monthly sales (Real-time is Premium)
 - Export inventory and analytics as Excel and PDF
+- Graphical Visualisation of the Earnings based on <br>
+   1) Daily Earnigs
+   2) Weekly Earnigs (1-Months, 3-Months, 6-Months, 12-Months)
+   3) Monthly Earnings
 
 ---
 
 ## Advanced Features
 
 ### ▶ Multi-Counter Support *(Available)*
-- Centralized inventory for multiple stores
-- Branch-level analytics
-- Inter-branch stock transfer
+- Centralized inventory for multiple counters
+- Who sold what and Who added what --> can be analysed in history
 
-### ▶ User Roles & Permissions
-- Role-based access: Admin, Manager, Cashier
-- Control access to features by user type
+
+### ▶ Permissions
+- Login
+- Sign Up
+- Shop ID
 
 ### ▶ Expense Management *(Upcoming)*
 - Record daily expenses
@@ -68,7 +73,7 @@
 
 ### ▶ Notifications & Alerts
 - Expiry alerts, low stock, and payment reminders
-- Email and SMS notifications
+- Email and SMS notifications (Upcoming)
 
 ### ▶ Mobile App Support *(Planned)*
 - Monitor sales and stock in real-time
