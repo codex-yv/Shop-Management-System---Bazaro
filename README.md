@@ -81,14 +81,12 @@ This branch **(bazaro/server-main)** is a production level branch based on **API
 
 ### ▶ Data Backup & Security
 - Automatic database backups
-- Secure login with OTP or biometrics
-- Environment variables for sensitive data
-
-### ▶ Security
-- Email and phone verification during sign-up
+- Secure login 
+- Proper Sign Up Via OTP verification
+- Face Unlock (Upcoming)
 - OTP-based password reset
 
----
+
 
 ## Installation
 
@@ -108,7 +106,7 @@ This branch **(bazaro/server-main)** is a production level branch based on **API
    ```bash
    py main.py
    
-3. **Read "How to use.txt" file**  (Not updated yet)
+3. **Read "How to use.txt" file**  
 
 ## Development Status
 
@@ -120,7 +118,7 @@ This branch **(bazaro/server-main)** is a production level branch based on **API
 | Customer Management        | ✅ Completed    | Loyalty system in place              |
 | Supplier Management        | ✅ Completed    | Purchase order & profile support     |
 | Login & Authentication     | ✅ Completed    | OTP-based with email/phone verify    |
-| Dashboard (Graphical)      | 🛠️ In Progress  | Visual charts and graphs being added |
+| Dashboard (Graphical)      | ✅ Completed  | Visual charts and graphs being added |
 | Settings Module            | 🛠️ In Progress  | User customization coming soon       |
 | Multi-Counter Support      | ✅ Completed    | Centralized data & store linking     |
 | Expense Management         | 🔜 Planned      | Record & analyze store expenses      |
