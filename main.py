@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from calendar import month_abbr
 import sqlite3
 import socket
-import pymongo
 import os
 import pythoncom
 import win32com.client as win32
@@ -15,17 +14,14 @@ import threading
 from tkinter import*
 from tkinter import ttk
 import customtkinter as ctk
-from tkinter import messagebox, filedialog, simpledialog
+from tkinter import messagebox, filedialog
 from tkcalendar import Calendar
 from PIL import Image, ImageTk
 from openpyxl import load_workbook
 from openpyxl.styles import Alignment
 from openpyxl.utils import get_column_letter
 import random
-import smtplib
-from email.message import EmailMessage
 from pathlib import Path
-from dotenv import load_dotenv
 import pandas as pd
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
@@ -52,6 +48,11 @@ choice_list = []
 username_list = []
 
 def check_internet(host="8.8.8.8", port=53, timeout=3):
+    '''
+    description:- Checks the internet connection
+    global variable:- None
+    in Function:- send_opt, try_login
+    '''
     try:
         # Attempt to connect to a well-known DNS server (Google)
         socket.setdefaulttimeout(timeout)
@@ -61,6 +62,11 @@ def check_internet(host="8.8.8.8", port=53, timeout=3):
         return False
 
 def update_day_date_time():
+    '''
+    description:- checks the date and time in every one second
+    global variables:- None
+    in Function:- try_login
+    '''
     now = datetime.now()
     
     day = now.strftime("%A") 
@@ -72,6 +78,11 @@ def update_day_date_time():
 
 
 def get_percentage_of_day():
+    '''
+    description:- to get the percentage of the day completed!
+    global variables:- None
+    in Function:- update_daily_gui
+    '''
     now = datetime.now()
     seconds_passed = now.hour * 3600 + now.minute * 60 + now.second
     total_seconds_in_day = 24 * 3600
@@ -79,6 +90,14 @@ def get_percentage_of_day():
     return (seconds_passed / total_seconds_in_day) * 100
 
 def update_progress():
+    '''
+    description:- updates the progress in database in earnings and 
+                    also updates the GUI of the dashboard daily income.
+    global variables:- None
+    in Function:- refreshEarnings, try_login
+
+    '''
+
     update_earnings()
     var = "Daily_Income"
     url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
@@ -92,6 +111,11 @@ def update_progress():
 
 
 def update_daily_gui():
+    '''
+    description:- updates the progress bar of the completed day.
+    global variables:- None
+    in Function:- try_login
+    '''
     percentage = get_percentage_of_day()
         
     daily_progress.set(percentage / 100)
@@ -100,9 +124,15 @@ def update_daily_gui():
 
 
 def generate_otp():
+    '''
+    description:- to generate an otp for signup, forget password
+    global variables:- None
+    in Function:- send_otp
+
+    '''
     return random.randint(100000, 999999)
 
-week = {
+week = { # global variable of get_fraction_of_week()
     'Monday':1,
     'Tuesday':2,
     'Wednesday':3,
@@ -113,6 +143,11 @@ week = {
 }
 
 def get_fraction_of_week():
+    '''
+    description:- to get the fraction of the completed week.
+    global variables:- week
+    in Function:- update_weekly_gui
+    '''
     global week
     
     now = datetime.now()
@@ -125,6 +160,11 @@ def get_fraction_of_week():
     return (day_count/7)*100
 
 def update_week_progress():
+    '''
+    description:- updates the weeekly earnings in database.
+    global variables:- None
+    in Function:- refreshEarnings, try_login
+    '''
     var = "Weekly_Income"
     url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
     try:
@@ -136,13 +176,18 @@ def update_week_progress():
       
 
 def update_weekly_gui():
+    '''
+    description:- updates the progress bar of the completed week.
+    global variables:- None
+    in Function:- try_login
+    '''
     day_frac = get_fraction_of_week()
     weekly_progress.set(day_frac / 100)
     win.after(2000, update_weekly_gui)
 
 
 
-month_days = {
+month_days = {# global variable of get_monthly_percentage
     1: 31,   # January
     2: 28,   # February (non-leap year)
     3: 31,   # March
@@ -159,6 +204,11 @@ month_days = {
     
     
 def get_monthly_percent():
+    '''
+    description:- to get the percentage of the day completed!
+    global variables:- month_days
+    in Function:- update_monthly_gui
+    '''
     global month_days
     date = datetime.today().day
 
@@ -169,7 +219,11 @@ def get_monthly_percent():
     return (date/days)*100
 
 def update_month_progress():
-    
+    '''
+    description:- updates the monthly earnings in database.
+    global variables:- None
+    in Function:- refreshEarnings, try_login
+    '''
     var = "Monthly_Income"
     url = f"https://sms-backend-90tc.onrender.com//earnings/{r_shop_name}/{var}"
     try:
@@ -183,18 +237,33 @@ def update_month_progress():
 
     
 def update_monthly_gui():
+    '''
+    description:- updates the progress bar of the completed week.
+    global variables:- None
+    in Function:- try_login
+    '''
     month_frac = get_monthly_percent()
 
     monthly_progress.set(month_frac / 100)
     win.after(3000, lambda: update_monthly_gui)
 
 def refreshEarnings():
+    '''
+    description:- use to refresh daily, monthly and weekly earnings.
+    global variables:- None
+    in Function:- buttons
+    '''
     update_progress()
     update_week_progress()
     update_month_progress()
 
 def send_otp(email):
-    global current_dir
+    '''
+    description:- use to send email on a given mail.
+    global variables:- none
+    in Function:- new_password, reset_resend_otp, try_signup, resend_otp
+    ''' 
+    
     if check_internet():
         otp = generate_otp()
         otpl.insert(0,otp)
@@ -209,6 +278,11 @@ def send_otp(email):
         messagebox.showerror('Connection Error', 'Please Check your internet connection!')
 
 def new_password():
+    '''
+    Description: Use to add new password to database (updated)
+    Global Variable: new_email_list
+    In function: button
+    '''
     global  new_email_list
     if len(username.get().strip())<4:
         messagebox.showerror('Reset Password', f"No username found with '{username.get()}'")
@@ -245,10 +319,20 @@ def new_password():
             messagebox.showerror('Reset Password', f"No username found with '{username.get()}'")
 
 def sign_up():
+    '''
+    Description: use to display the UI of the sign up 
+    Global Variable: None
+    In function: button
+    '''
     contentframe.pack_forget()
     sign_up_frame.pack()
 
 def try_login ():
+    '''
+    Description: use to login into the app.
+    Global Variable: username_list
+    In function: button
+    '''
     global username_list
     if check_internet():
         
@@ -290,6 +374,11 @@ def try_login ():
         messagebox.showerror('Connection Error', 'Please Check your internet connection!')
 
 def reset_verify_otp():
+    '''
+    Description: use to resend otp during forget password
+    Global Variable: otpl
+    In function: button
+    '''
     global otpl
     reset_otp_val = resetEmailotp.get()
 
@@ -301,11 +390,11 @@ def reset_verify_otp():
 
 def reset_password():
     '''
-    This is a function for reset button 
-    which finally inserts new password to the mongodb database!
+    Description:This is a function for reset button 
+                which finally inserts new password to the mongodb database!
+    Global Variable: none
+    In function: button
     '''
-
-    global client_info
     try:
         url = "https://sms-backend-90tc.onrender.com/resetpassword"  
 
@@ -324,10 +413,20 @@ def reset_password():
         messagebox.showinfo("Reset Failed", "Request to Reset the passowrd is aborted, Please try again! This is happening because you are using free version of Bazaro!")
 
 def reset_resend_otp():
+    '''
+    Description: use to send OTP to user again for forgetting password
+    Global Variable:  new_email_list
+    In function: button
+    '''
     global new_email_list
     threading.Thread(target=send_otp, args=(new_email_list[0],), daemon=True).start()
 
 def try_signup():
+    '''
+    Description: use to sign up to the app
+    Global Variabe: error
+    In function: button
+    '''
     global error
     username_value_signup =  username_signup.get().strip()
     email_value_signup = email_signup.get()
@@ -372,8 +471,10 @@ def try_signup():
 def verify_otp():
 
     '''
-    This function if called on a button click. When it is called new user is finally added to the 
-    mongodb database!
+    Description: This function if called on a button click. When it is called new user is finally added to the 
+                mongodb database!
+    Global Variable: otpl
+    In function: button
     '''
 
     global otpl
@@ -416,13 +517,29 @@ def verify_otp():
 
 
 def resend_otp():
+    '''
+    Description: use to resend otp to user while signing up
+    Global Variable: none
+    In function: button
+    '''
     threading.Thread(target=send_otp, args=(email_signup.get(),), daemon=True).start()
         
 def get_back():
+    '''
+    Description: use to get back to signup page from verification page
+    Global Variable: none
+    In function: button
+    '''
     verification_frame.pack_forget()
     sign_up_frame.pack()
 
 def func_finder(prev_func_name):
+    '''
+    Description: use to get the previous frame so as to delete it while new frame is being placed or pack.
+    Global Variable: inventory_func_list
+    In function: dashboardFunction, inventoryFunction, alertFunction, billingFunction, supplierFunction. historyFunction, 
+                settingFuntion
+    '''
     global inventory_func_list
     if prev_func_name == 'dashboard':
         dashboard_display.pack_forget()
@@ -450,6 +567,11 @@ def func_finder(prev_func_name):
     
     
 def dashboardFunction():
+    '''
+    Description: use to display dashboard of the app
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "dashboard"
@@ -462,6 +584,11 @@ def dashboardFunction():
 
 
 def inventoryFunction():
+    '''
+    Description: use to display inventory of the app.
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "inventory"
@@ -473,6 +600,11 @@ def inventoryFunction():
         inventory_display.pack(side='left')
 
 def alertFunction():
+    '''
+    Description: use to display alert UI of the app.
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "alert"
@@ -487,6 +619,11 @@ def alertFunction():
         
 
 def billingFunction():
+    '''
+    Description: use to display billing of the app.
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "billing"
@@ -498,6 +635,11 @@ def billingFunction():
         billing_display.pack(side='left')
 
 def supplierFunction():
+    '''
+    Description: use to display supplier UI of the app.
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "supplier"
@@ -509,6 +651,11 @@ def supplierFunction():
         supply_display.pack(side='left')
 
 def historyFunction():
+    '''
+    Description: use to display history of the app.
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "history"
@@ -522,6 +669,11 @@ def historyFunction():
         show_global_history_data()
 
 def settingFunction():
+    '''
+    Description: use to display settings of the app.
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "setting"
@@ -533,6 +685,11 @@ def settingFunction():
         setting_display.pack(side='left')
 
 def ccFunction():
+    '''
+    Description: use to display customer-care of the app.
+    Global Variable: func_list
+    In function: button
+    '''
     global func_list
     prev_func_name = func_list[0]
     current_func_name = "cc"
@@ -544,6 +701,11 @@ def ccFunction():
         cc_display.pack(side='left')
 
 def stock_add():
+    '''
+    Description: use to display add-stock UI of the app.
+    Global Variable: inventory_func_list
+    In function: button
+    '''
     global inventory_func_list
     inventory_display.pack_forget()
     add_stock_frame.pack(side='left')
@@ -551,12 +713,22 @@ def stock_add():
     inventory_func_list.insert(0, 'add_stock')
 
 def update_stock():
+    '''
+    Description: use to display update-stock UI of the app.
+    Global Variable: inventory_func_list
+    In function: button
+    '''
     global inventory_func_list
     inventory_display.pack_forget()   
     update_stock_frame.pack(side='left')
     inventory_func_list.insert(0, 'update_stock')
 
 def analyse_stock():
+    '''
+    Description: use to display analayze-stock UI of the app.
+    Global Variable: inventory_func_list
+    In function: button
+    '''
     global inventory_func_list
     inventory_display.pack_forget()   
     stock_analytics_frame.pack(side='left')
@@ -564,6 +736,11 @@ def analyse_stock():
     fetch_and_display_inventory()
 
 def open_calendar():
+    '''
+    Description: use to diplay calander during  add-stock
+    Global Variable: none
+    In function: button
+    '''
     top = Toplevel(win)
     top.title("Select a Date")
     top.geometry("300x300")
@@ -589,6 +766,11 @@ def open_calendar():
     ctk.CTkButton(top, text="Select", command=grab_date).pack(pady=5)
     
 def open_calendar1():
+    '''
+    Description: use to display the calander in add-stock
+    Global Variable: none
+    In function: button
+    '''
     top = Toplevel(win)
     top.title("Select a Date")
     top.geometry("300x300")
@@ -614,7 +796,13 @@ def open_calendar1():
     ctk.CTkButton(top, text="Select", command=grab_date).pack(pady=5)
 
 def add_stock_to_dbs():
-    global inventory, r_shop_name
+    '''
+    Description: use to check-validity when data is added to the database. It looks for duplicate
+                product id or product name in database
+    Global Variable: r_shop_name
+    In function: add_stock
+    '''
+    global r_shop_name
     try:
         url = f"https://sms-backend-90tc.onrender.com/productInfo/{r_shop_name}/{barid.get()}"  
         response = requests.get(url)
@@ -634,6 +822,11 @@ def add_stock_to_dbs():
         return True
 
 def create_inventory():
+    '''
+    Description: use to create (if not available) db and table.
+    Global Variable:  none
+    In function: add_stock, get_product_by_id, decrease_product_quantity
+    '''
     folder_name = "database_folder"
     db_filename = "inventory.db"
     db_path = os.path.join(folder_name, db_filename)
@@ -666,6 +859,11 @@ def create_inventory():
     return db_path
 
 def add_to_inventory(record:dict):
+    '''
+    Description: use to add stock to the database in local database
+    Global Variable: none
+    In function: add_stock
+    '''
     db_path = create_inventory()
     if record:
         required_keys = [
